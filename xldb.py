@@ -57,9 +57,14 @@ class XLdb(object):
         self.hash_comments = hash_comments
         
         cleanrow_ = lambda row_: [x for x in row_ if x is not '']
+        def getvalue(h_):
+            if hasattr(h_.value, "encode"):
+                return h_.value.encode()
+            else:
+                return h_.value
+            
         if header:
-            self.hdr = [h.value.encode() if hasattr(h.value, "encode") else h.value
-                        for h in self.sh.row(startrow)]
+            self.hdr = [getvalue(h) for h in self.sh.row(startrow)]
             rowValues = lambda row_, loc: dict(zip(self.hdr[loc:],
                                                    cleanrow_(row_[loc:])))
         else:
