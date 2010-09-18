@@ -75,9 +75,13 @@ class XLdb(object):
         if header:
             startatrow = startrow + 1 
         else: 
-            startrow
+            startatrow = startrow
+        
+        if idx_column == 0:    
+            startloc = 1  
+        else:
+            startloc = 0
             
-        startloc = 1 if idx_column == 0 else 0
         for xrow in range(startatrow, self.nrows):
             try:
                 xr = map(self.xlCellValue, self.sh.row(xrow))
@@ -89,8 +93,12 @@ class XLdb(object):
                 
                 if header and (xr[0] not in self.refcolumn):
                     self.refcolumn.append(xr[0])
+                
+                if idx_column >= 0:    
+                    dkey = xr[idx_column] 
+                else: 
+                    dkey = xrow
                     
-                dkey = xr[idx_column] if idx_column >= 0 else xrow
                 self.qdata[dkey] = xrvalues
     
     def __getitem__(self, key):
