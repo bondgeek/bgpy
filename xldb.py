@@ -72,7 +72,11 @@ class XLdb(object):
 
         self.refcolumn = []
         self.qdata = {}
-        startatrow = startrow + 1 if header else startrow
+        if header:
+            startatrow = startrow + 1 
+        else: 
+            startrow
+            
         startloc = 1 if idx_column == 0 else 0
         for xrow in range(startatrow, self.nrows):
             try:
