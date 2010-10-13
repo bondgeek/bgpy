@@ -3,9 +3,17 @@ Date functions
 
 Use bgDate to avoid problems with Resolvers .NET date class
 '''
+try:
+    # CSharp QuantLib bindings
+    from QuantLib import Month
+    def GetMonth(m):
+        return getattr(Month, Month.GetName(Month, m))
+except:
+    #posix C++ QuantLib bindings
+    def GetMonth(self, m):
+        return m
+                
 from QuantLib import Date as qlDate
-from QuantLib import Month
-
 from datetime import date as pyDate
 
 import re

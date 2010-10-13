@@ -2,15 +2,20 @@
 QLNet
 '''
 import sys
-import clr
-QL_LIB = 'C:\\Program Files\\ResolverLib\\Quantlib\\lib'
-if QL_LIB not in sys.path:
-    sys.path.append(QL_LIB)
-clr.AddReference('NQuantLib')
 
+try:
+    import clr
+    from System.Collections.Generic import List
+    QL_LIB = 'C:\\Program Files\\ResolverLib\\Quantlib\\lib'
+    if QL_LIB not in sys.path:
+        sys.path.append(QL_LIB)
+    clr.AddReference('NQuantLib')
+    CONFIG_NAME = 'IPY'
+except:
+    CONFIG_NAME = 'PY'
+    
 from QuantLib import *
 
-from System.Collections.Generic import List
 from bgpy import aliasReferences as _aliasReferences
 from bgdate import bgDate, dateTuple, dateFirstOfMonth
 
@@ -19,31 +24,34 @@ _createAliases = vars().update
 #
 # Aliases 
 #
-#RateHelperVector = List[RateHelper]
-# QuoteHandle = Handle[Quote]  #QuantLib compatibility
+# Calendars & DayCounters
 
-# Calendars
-USGovernmentBond = UnitedStates(UnitedStates.Market.GovernmentBond)
-USGovernmentNYSE = UnitedStates(UnitedStates.Market.NYSE)
-USGovernmentSettlement = UnitedStates(UnitedStates.Market.Settlement)
-USGovernmentNERC = UnitedStates(UnitedStates.Market.NERC)
- 
-# Import various sub-namespaces
-#_createAliases(_aliasReferences(Time.DayCounters, vars()))
-_createAliases(_aliasReferences(Frequency, vars()))
-_createAliases(_aliasReferences(Compounding, vars()))
-_createAliases(_aliasReferences(BusinessDayConvention, vars()))
-_createAliases(_aliasReferences(DateGeneration.Rule, vars()))
-_createAliases(_aliasReferences(TimeUnit, vars()))
-
-ActualActualBond = ActualActual(ActualActual.Convention.Bond)
-ActualActualISDA = ActualActual(ActualActual.Convention.ISDA)
-
-#Thirty360Bond = Thirty360(Thirty360.Thirty360Convention.BondBasis)
-#Thirty360EuroBond = Thirty360(Thirty360.Thirty360Convention.EurobondBasis)
-
-Thirty360Bond = Thirty360(Thirty360.Convention.BondBasis)
-Thirty360EuroBond = Thirty360(Thirty360.Convention.EurobondBasis)
+if CONFIG_NAME == 'IPY':
+    USGovernmentBond = UnitedStates(UnitedStates.Market.GovernmentBond)
+    USGovernmentNYSE = UnitedStates(UnitedStates.Market.NYSE)
+    USGovernmentSettlement = UnitedStates(UnitedStates.Market.Settlement)
+    USGovernmentNERC = UnitedStates(UnitedStates.Market.NERC)
+    ActualActualBond = ActualActual(ActualActual.Convention.Bond)
+    ActualActualISDA = ActualActual(ActualActual.Convention.ISDA)
+    Thirty360Bond = Thirty360(Thirty360.Convention.BondBasis)
+    Thirty360EuroBond = Thirty360(Thirty360.Convention.EurobondBasis)
+     
+    # Import various sub-namespaces
+    _createAliases(_aliasReferences(Frequency, vars()))
+    _createAliases(_aliasReferences(Compounding, vars()))
+    _createAliases(_aliasReferences(BusinessDayConvention, vars()))
+    _createAliases(_aliasReferences(DateGeneration.Rule, vars()))
+    _createAliases(_aliasReferences(TimeUnit, vars()))
+    
+else:
+    USGovernmentBond = UnitedStates(UnitedStates.GovernmentBond)
+    USNYSE = UnitedStates(UnitedStates.NYSE)
+    USSettlement = UnitedStates(UnitedStates.Settlement)
+    USNERC = UnitedStates(UnitedStates.NERC)
+    ActualActualBond = ActualActual(ActualActual.Bond)
+    ActualActualISDA = ActualActual(ActualActual.ISDA)
+    Thirty360Bond = Thirty360(Thirty360.BondBasis)
+    Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
 
 
 class Tenor(object):
