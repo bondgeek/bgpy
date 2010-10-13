@@ -7,7 +7,7 @@ Created on Jan 24, 2010
 '''
 
 import bgpy.QL as ql
-from bgpy.QL import BGDate
+from bgpy.QL import bgDate
 
 import bgpy.QL.termstructure as ts
 from bgpy.QL.irswaps import USDLiborSwap, USDLiborSwaption, BasisSwap
@@ -34,7 +34,7 @@ class BondType(object):
     frequency = ql.Semiannual
     payconvention = ql.Unadjusted
     termconvention = ql.Unadjusted
-    calendar = ql.UnitedStates(ql.UnitedStates.Market.GovernmentBond)
+    calendar = ql.USGovernmentBond
     face = 100.0
     
     def bondtype(self):

@@ -7,16 +7,13 @@ Created on May 26, 2010
 import bgpy.QL as ql
 from termstructurehelpers import HelperWarehouse, SwapRate
         
-# .Net modules
-from System.Collections.Generic import List
-
 class TermStructureModel(object):
     '''
     Constructs a quantlib termstructure 
     '''
     depo_daycount = ql.Actual360()
     term_daycount = ql.Thirty360()
-    daycount = ql.ActualActual(ql.ActualActual.Convention.ISDA)
+    daycount = ql.ActualActualISDA
     calendar = ql.TARGET()
 
     def __init__(self, curvedata=None, curvedate=None, datadivisor=1.000,

@@ -10,7 +10,7 @@ try:
         return getattr(Month, Month.GetName(Month, m))
 except:
     #posix C++ QuantLib bindings
-    def GetMonth(self, m):
+    def GetMonth(m):
         return m
                 
 from QuantLib import Date as qlDate
@@ -105,13 +105,13 @@ def bgDate(*args):
         qDate = qlDate()
     elif nargs == 3:
         d, m, y = args
-        m_ = getattr(Month, Month.GetName(Month, m))
+        m_ = GetMonth(m)
         qDate = qlDate(d, m_, y)
     elif nargs ==1:
         dtuple = dateTuple(args[0])
         if dtuple:
             m, d, y = dtuple 
-            m_ = getattr(Month, Month.GetName(Month, m))
+            m_ = GetMonth(m)
             qDate = qlDate(d, m_, y)
         else:
             qDate = qlDate()

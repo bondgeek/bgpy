@@ -11,7 +11,7 @@ FixedReceiver = ql.VanillaSwap.Receiver
 class USDLiborSwap(object):
     fixedLegFrequency = ql.Semiannual
     fixedLegAdjustment = ql.Unadjusted
-    fixedLegDayCounter =  ql.Thirty360(0)
+    fixedLegDayCounter =  ql.Thirty360()
     fixedLegTenor = ql.Period(fixedLegFrequency)
 
     floatingLegFrequency =  ql.Quarterly
@@ -135,7 +135,7 @@ class BasisSwap(ql.Swap):
     '''
     Models a swap paying/receiving a percent of libor index versus basis index plus a spread.
     '''
-    calendar = ql.UnitedStates(ql.UnitedStates.Market.GovernmentBond)
+    calendar = ql.USGovernmentBond
     frequency =  ql.Quarterly
     adjustment =  ql.ModifiedFollowing
     
