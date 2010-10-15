@@ -25,16 +25,16 @@ class USDLiborSwap(object):
     def __init__(self, termstructure, startDate, termDate, fixedRate, PayFlag=1, 
                 spread=0.0, notionalAmount=100.0,
                 setPriceEngine=False):
+        self.termstructure = termstructure
         startDate, termDate = map(ql.bgDate, [startDate, termDate])
         self.payFlag = FixedPayer if PayFlag else FixedReceiver
         self.startDate = startDate
         self.termDate = termDate
         self.spread = spread
-        self.termstructure = termstructure
         self.fixedRate = fixedRate
         
-        self.floatingLegIndex_  = ql.USDLibor(self.floatingLegTenor,
-                                             self.termstructure.handle)
+        self.floatingLegIndex_  = ql.USDLibor(self.floatingLegTenor, 
+                                              self.termstructure.handle)
         
         self.fixedSched_ = ql.Schedule(self.startDate, 
                                  self.termDate,  
@@ -94,8 +94,8 @@ class USDLiborSwaption(object):
                 bermudan = False,
                 callFrequency=ql.Semiannual
                 ):
-        firstCallDate, termDate = map(ql.bgDate, [firstCallDate, termDate])
         self.termstructure = termstructure
+        firstCallDate, termDate = map(ql.bgDate, [firstCallDate, termDate])
         swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, fixedRate, 
                             PayFlag, spread, 
                             notionalAmount).swap

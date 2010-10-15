@@ -58,7 +58,7 @@ class USTsyBond(BondType):
             d[k] = getattr(self,k)
         return d
 
-class MuniBond(BondType):
+class MuniBondType(BondType):
     settlementdays = 3
     daycount = ql.Thirty360()
     frequency = ql.Semiannual
@@ -92,7 +92,7 @@ class BondCallFeature(object):
     def __repr__(self):
         return self.__str__()
 
-class BGBond(object):
+class SimpleBond(object):
     """
     Bond Object: 
     coupon, maturity, issuedate, oid, callfeature, bondtype, redvalue
@@ -204,7 +204,7 @@ class BGBond(object):
     def calc(self, bondyield=None, price=None, dict_out=False):
         '''
         Calculates price/yield based on which value is passed.
-        If neither is passed, uses which BGBond attribute is set.
+        If neither is passed, uses which SimpleBond attribute is set.
         Error condition if neither price nor bondyield is passed.
         
         Optional argument:  dict_out=True returns {'bondyield':  yld, 
@@ -239,7 +239,7 @@ class BGBond(object):
                             (callpx <= level or not cmplevel), 
                             (calldt < todate or callpx < toprice)]):
                         
-                        b = BGBond(self.coupon, calldt, 
+                        b = SimpleBond(self.coupon, calldt, 
                                    self.issuedate, 
                                    self.oid,
                                    bondtype=self.bondtype, 
@@ -404,6 +404,7 @@ class BGBond(object):
             print("Problem with bondyield, price inputs: %s %s" % (bondyield, price))
             raise TypeError
         
+        # TODO: should use static swap and spreadedcurve to price asset swaps.
         prm = -(price - 100.0)
         x_ = 0.0
         v_ = self.assetSwapPremium(termstructure, x_, vol, model=model)
@@ -427,15 +428,17 @@ class BGBond(object):
     def assetSwapPremium(self, termstructure, spread_,
                          vol=1e-7, model=ql.BlackKarasinski):
         '''
-        Calculate asset swap premium, given spread
+        Calculate asset swap premium, given spread and termstructure.
+        Assumes termstructure object is derivative of TermStructureModel class,
+        or QuantLib YieldTermStructureHandle.
         '''
-
+        
         asw1 = USDLiborSwap(termstructure, 
-                          self.settle, 
-                          self.maturity, self.coupon, 
-                          PayFlag=1, spread=spread_,
-                          setPriceEngine=True,
-                          notionalAmount = 100.0)
+                            self.settle, 
+                            self.maturity, self.coupon, 
+                            PayFlag=1, spread=spread_,
+                            setPriceEngine=True,
+                            notionalAmount = 100.0)
         prm = asw1.value()
         
         if self.calllist:
@@ -450,15 +453,15 @@ class BGBond(object):
         return prm 
     settlementDate = property(getSettlement, setSettlement)
         
-class BGMuniBond(MuniBond,BGBond):
+class MuniBond(MuniBondType,SimpleBond):
     '''
-    Muni Bond Object, inherits from BGBond
+    Muni Bond Object, inherits from SimpleBond
     Override asset swap methods to allow gross up coupon and apply leverage. (instrument based approach).
     
     '''
     def __init__(self, coupon, maturity, issuedate=None, oid=None,callfeature=None,
                        redvalue=100.0):
-        BGBond.__init__(self, coupon, maturity, issuedate, oid, callfeature, MuniBond(),
+        SimpleBond.__init__(self, coupon, maturity, issuedate, oid, callfeature, MuniBondType(),
                               redvalue)
         
     def qtax(self, settle=None, ptsyear=0.25):

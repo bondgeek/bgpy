@@ -16,10 +16,18 @@ class TermStructureModel(object):
     daycount = ql.ActualActualISDA
     calendar = ql.TARGET()
 
-    def __init__(self, datadivisor=1.000, settledays=2):
+    def __init__(self, datadivisor=1.000, settledays=2, curvelabel=None):
         
+        self.curvelabel = curvelabel
         self.datadivisor = datadivisor
         self.settledays = settledays
+        
+        # TODO:  need to refactor to self.curve_
+        self.curve = ql.RelinkableYieldTermStructureHandle()
+        self.upToDate = False
+        self.discount = self.curve.discount
+        self.zeroRate = self.curve.zeroRate
+        self.referenceDate = self.curve.referenceDate
             
     def cleancurvedata(self, curve):
         '''
@@ -41,7 +49,7 @@ class TermStructureModel(object):
         '''
         getter for handle property
         '''
-        return ql.YieldTermStructureHandle(self.curve)
+        return self.curve
     
     def swapEngine(self):
         return ql.DiscountingSwapEngine(self.handle)
@@ -140,11 +148,10 @@ class SimpleCurve(TermStructureModel):
     accuracy = 1e-12
     
     def __init__(self, curvedata=None, curvedate=None, datadivisor=1.000,
-                     settledays=2, setIborIndex=True):
-        TermStructureModel.__init__(self, datadivisor, settledays)
+                     settledays=2, setIborIndex=True, curvelabel=None):
+        TermStructureModel.__init__(self, datadivisor, settledays, curvelabel)
 
         self.ratehelpers = None
-        self.curve = None
         self.instruments_ = ql.RateHelperVector()
         self.setIborIndex = setIborIndex
                         
@@ -177,7 +184,7 @@ class SimpleCurve(TermStructureModel):
             SwapRate.setLibor(self.settlement, 
                               self.curvedata[SwapRate.floatingLegIndex]/self.datadivisor)
 
-        if not self.curve:
+        if not self.upToDate:
             self.curve_(self.ratehelpers.vector)
 
         return self
@@ -193,26 +200,28 @@ class SimpleCurve(TermStructureModel):
         "calc curve"
 
         PYC = ql.PiecewiseFlatForward
-        self.curve = PYC(self.settledays, self.calendar, ratehelpervector, 
-                         ql.ActualActualISDA,
-                         self.JumpQuotes, self.JumpDates, self.accuracy)
+        curve = PYC(self.settledays, self.calendar, ratehelpervector, 
+                    ql.ActualActualISDA,
+                    self.JumpQuotes, self.JumpDates, self.accuracy)
 
-        self.curve.enableExtrapolation()
-        self.discount = self.curve.discount
-        self.zeroRate = self.curve.zeroRate
-        self.referenceDate = self.curve.referenceDate
+        curve.enableExtrapolation()   
+        self.curve.linkTo(curve)
+        self.upToDate = True
     
     def __str__(self):
-        return "SimpleCurve"
+        if self.curvelabel:
+            return self.curvelabel
+        else:
+            return "SimpleCurve"
     
 class DiscountCurve(TermStructureModel):
     '''
     Fits a set of pure discount factors to a term structure.
     '''
     def __init__(self, curvedata=None, settledays = 2,
-                 interp = ql.LogLinear(), datadivisor=1.0):
+                 interp = ql.LogLinear(), datadivisor=1.0, curvelabel=None):
     
-        TermStructureModel.__init__(self, datadivisor, settledays)
+        TermStructureModel.__init__(self, datadivisor, settledays, curvelabel)
         self.interp = interp
         
         if curvedata:
@@ -231,15 +240,25 @@ class DiscountCurve(TermStructureModel):
         discountvector = DoubleVector([float(curvedata[d]) for d in datevector])        
         datevector = DateVector(datevector)
 
-        self.curve = DiscountCurve(datevector, discountvector,
-                                   self.daycount, self.calendar, 
-                                   self.interp)
-                                   
-        self.curve.enableExtrapolation()
-        self.discount = self.curve.discount
-        self.zeroRate = self.curve.zeroRate
-        self.referenceDate = self.curve.referenceDate
+        curve = DiscountCurve(datevector, discountvector,
+                              self.daycount, self.calendar, 
+                              self.interp)
+        curve.enableExtrapolation()   
+        self.curve.linkTo(curve)
 
-
+class SpreadedCurve(TermStructureModel):
+    '''
+    Created a termstructure object spread from a reference
+    '''
+    def __init__(self, termstructure, spread=0.0):
+        TermStructureModel.__init__(self, termstructure.datadivisor, 
+                                          termstructure.settledays, 
+                                          termstructure.curvelabel)
+        self.spread = ql.QuoteHandle(ql.SimpleQuote(spread))
+        curve = ql.ForwardSpreadedTermStructure(termstructure.handle,
+                                                self.spread)
+        curve.enableExtrapolation()   
+        self.curve.linkTo(curve)
+        
 class RatioBasisCurve(object):
     pass
