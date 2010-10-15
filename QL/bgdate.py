@@ -59,7 +59,8 @@ def dateTuple(dateObject):
     '''
     For a somewhat generic range of date objects, return month, day, year tuple
     '''
-
+    dateObject = getattr(dateObject, "Value", dateObject)
+    
     if hasattr(dateObject, "DateTime"):
         m, d, y = (dateObject.DateTime.Month,
                    dateObject.DateTime.Day,

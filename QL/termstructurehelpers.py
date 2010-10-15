@@ -120,7 +120,7 @@ class BondHelper(object):
             # just a kluge to insure that a semi-annual coupon has occured
             # before evaluationDate
             self.issueDate = self.calendar.advance(self.todaysDate, 
-                                                   -12, Months)
+                                                   -12, ql.Months)
         if type(maturity) is str:
             tenor = ql.Tenor(maturity)            
             maturity = self.calendar.advance(self.todaysDate,
@@ -137,11 +137,11 @@ class BondHelper(object):
             self.maturity = ql.bgDate(maturity)
             
     def getHelper(self, level, datadivisor=1.0):
-        self.coupon, self.dollarprice = self.level
-        cpn = [1.0, self.coupon/datadivisor]
+        self.coupon, self.dollarprice = level
+        cpn = ql.DoubleVector([1.0, self.coupon/datadivisor])
 
         sched =ql.Schedule(self.issueDate, self.maturity, 
-                           ql.Period(Semiannual), self.calendar, 
+                           ql.Period(ql.Semiannual), self.calendar, 
                            ql.ModifiedFollowing, ql.ModifiedFollowing, 
                            ql.Backward, 0)
 
@@ -187,10 +187,13 @@ class SimpleHelper(dict):
         return ratehelper.getHelper(level, self.datadivisor)
 
 class HelperWarehouse(object):
+    '''
+    Create a container for QuantLib TermStructure RateHelpers.
+    '''
 
-    ratehelpers = {}
-    ratehelpervector = ql.RateHelperVector()
     def __init__(self, swaptenors, levels_=None, datadivisor=1.0):
+        self.ratehelpers = {}
+        self.ratehelpervector = ql.RateHelperVector()
         if not levels_:
             levels_ = [0 for tenor in swaptenors]
         else:

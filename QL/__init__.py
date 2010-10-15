@@ -5,8 +5,7 @@ import sys
 
 try:
     import clr
-    from System.Collections.Generic import List
-    QL_LIB = 'C:\\Program Files\\ResolverLib\\Quantlib\\lib'
+    QL_LIB = 'C:\\Program Files\\Resolver One\\site-packages\\Quantlib\\lib'
     if QL_LIB not in sys.path:
         sys.path.append(QL_LIB)
     clr.AddReference('NQuantLib')
@@ -91,6 +90,9 @@ class Tenor(object):
     @property
     def qlTuple(self):
         return (self.length, self.timeunit)
+        
+    def advance(self, date_, calendar=TARGET(), adjustType=Unadjusted):
+        return TARGET().advance(date_, self.length, self.timeunit, adjustType)
 
 def setLiborIndex(libor=None, settlementDate=None, fixingRate=None, liborTenor='3M'):
     '''

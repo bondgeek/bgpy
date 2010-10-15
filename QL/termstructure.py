@@ -16,13 +16,10 @@ class TermStructureModel(object):
     daycount = ql.ActualActualISDA
     calendar = ql.TARGET()
 
-    def __init__(self, curvedata=None, curvedate=None, datadivisor=1.000,
-                     settledays=2):
+    def __init__(self, datadivisor=1.000, settledays=2):
         
+        self.datadivisor = datadivisor
         self.settledays = settledays
-        
-        if curvedata:
-            self.update(curvedata, curvedate, datadivisor)
             
     def cleancurvedata(self, curve):
         '''
@@ -32,31 +29,12 @@ class TermStructureModel(object):
         
         # remove any null values from curve data 
         keys = curve.keys()
+        self.curvedata = {}
         for k in keys:
-            if not curve.get(k, None):
-                curve.pop(k)
+            if (curve.get(k, None) and k):
+                self.curvedata[k] = curve[k]
                 
-        self.curvedata = curve
-    
         return self.curvedata
-
-    def setcurvedates(curvedate=None, settledays=2, calendar=ql.TARGET()):
-        '''
-        Set curve dates.
-        '''
-        if curvedate:
-            curvedate = ql.bgDate(curvedate)
-            curvedate = calendar.adjust(curvedate)
-            ql.Settings.instance().setEvaluationDate(curvedate)
-        else:
-            curvedate = ql.Settings.instance().getEvaluationDate()
-         
-        settlement = calendar.advance(curvedate, settledays, ql.Days)
-        
-        self.curvedate = curvedate
-        self.settlement = settlement
-        
-        return curvedate, settlement
     
     @property
     def handle(self):
@@ -154,9 +132,6 @@ class SimpleCurve(TermStructureModel):
     assumes that rates are in form 5.00% = 5.00
     use keyword datadivisor = 1.0, if rates are in decimal.
     '''
-    ratehelpers = None
-    curve = None
-    instruments_ = ql.RateHelperVector()
     daycount = ql.ActualActualISDA
     calendar = ql.TARGET()
 
@@ -166,21 +141,29 @@ class SimpleCurve(TermStructureModel):
     
     def __init__(self, curvedata=None, curvedate=None, datadivisor=1.000,
                      settledays=2, setIborIndex=True):
-      
+        TermStructureModel.__init__(self, datadivisor, settledays)
+
+        self.ratehelpers = None
+        self.curve = None
+        self.instruments_ = ql.RateHelperVector()
         self.setIborIndex = setIborIndex
-        TermStructureModel.__init__(self, curvedata, curvedate, datadivisor,
-                                    settledays)
+                        
+        if curvedata:
+            self.update(curvedata, curvedate)
                                     
-    def update(self, curvedata, curvedate=None, datadivisor=1.0):
+    def update(self, curvedata, curvedate=None, datadivisor=None):
         "creates ratehelpers object"
+        if datadivisor:
+            self.datadivisor = datadivisor
+            
         curvedata = self.cleancurvedata(curvedata)
         
         if self.ratehelpers:
-            self.ratehelpers.update(curvedata, datadivisor)
+            self.ratehelpers.update(curvedata, self.datadivisor)
         else:
             self.ratehelpers = HelperWarehouse(curvedata.keys(), 
                                                curvedata.values(), 
-                                               datadivisor)
+                                               self.datadivisor)
         if not curvedate:
             curvedate = ql.Settings.instance().getEvaluationDate()
             
@@ -192,10 +175,19 @@ class SimpleCurve(TermStructureModel):
         
         if self.setIborIndex:
             SwapRate.setLibor(self.settlement, 
-                              self.curvedata[SwapRate.floatingLegIndex]/datadivisor)
+                              self.curvedata[SwapRate.floatingLegIndex]/self.datadivisor)
 
         if not self.curve:
             self.curve_(self.ratehelpers.vector)
+
+        return self
+
+    def reset(self):
+        if self.ratehelpers:
+            self.ratehelpers = None
+            self.curve = None
+            return True
+        return False
         
     def curve_(self, ratehelpervector):
         "calc curve"
@@ -210,14 +202,17 @@ class SimpleCurve(TermStructureModel):
         self.zeroRate = self.curve.zeroRate
         self.referenceDate = self.curve.referenceDate
     
+    def __str__(self):
+        return "SimpleCurve"
+    
 class DiscountCurve(TermStructureModel):
     '''
     Fits a set of pure discount factors to a term structure.
     '''
     def __init__(self, curvedata=None, settledays = 2,
-                 interp = ql.LogLinear()):
+                 interp = ql.LogLinear(), datadivisor=1.0):
     
-        self.settledays = settledays
+        TermStructureModel.__init__(self, datadivisor, settledays)
         self.interp = interp
         
         if curvedata:
