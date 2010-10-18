@@ -174,8 +174,8 @@ class SimpleCurve(TermStructureModel):
         if not curvedate:
             curvedate = ql.Settings.instance().getEvaluationDate()
             
-        self.curvedate = self.calendar.adjust(curvedate)
-        self.settlement = self.calendar.advance(curvedate, 
+        self.curvedate = self.calendar.adjust(ql.bgDate(curvedate))
+        self.settlement = self.calendar.advance(self.curvedate, 
                                                 self.settledays, ql.Days)
                                                 
         ql.Settings.instance().setEvaluationDate(self.curvedate)
@@ -195,7 +195,16 @@ class SimpleCurve(TermStructureModel):
             self.curve = None
             return True
         return False
+          
+    def checkcurve(self):
+        datakeys = self.curvedata.keys()
+        datakeys.sort(key = lambda x: ql.Tenor(x).term)
         
+        check_ = []
+        for k in datakeys:
+            check_.append((k, (self.tenorpar(k)-self.curvedata[k]/self.datadivisor)*100.0))
+        return check_
+      
     def curve_(self, ratehelpervector):
         "calc curve"
 
@@ -248,17 +257,34 @@ class DiscountCurve(TermStructureModel):
 
 class SpreadedCurve(TermStructureModel):
     '''
-    Created a termstructure object spread from a reference
+    Create a termstructure object spread from a reference
+    Value types:
+        "F" = ForwardSpreadTermStructure
+        "Z" = ZeroSpreadedTermStructure
     '''
-    def __init__(self, termstructure, spread=0.0):
+    types_ = {"F": ql.ForwardSpreadedTermStructure,
+              "Z": ql.ZeroSpreadedTermStructure }
+              
+    def __init__(self, termstructure, spread=0.0, type="F"):
+    
         TermStructureModel.__init__(self, termstructure.datadivisor, 
                                           termstructure.settledays, 
                                           termstructure.curvelabel)
-        self.spread = ql.QuoteHandle(ql.SimpleQuote(spread))
+        self.spread_ = ql.SimpleQuote(spread)
         curve = ql.ForwardSpreadedTermStructure(termstructure.handle,
-                                                self.spread)
+                                                ql.QuoteHandle(self.spread_))
         curve.enableExtrapolation()   
         self.curve.linkTo(curve)
+
+    @property
+    def spread(self):
+        return self.spread_.value()
+    
+    @spread.setter
+    def spread(self, newvalue):
+        self.spread_.setValue(newvalue)
+    
+    
         
 class RatioBasisCurve(object):
     pass

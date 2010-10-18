@@ -58,6 +58,10 @@ class Tenor(object):
                    'W': Weeks, 
                    'M': Months, 
                    'Y': Years}
+    _tenorLength = {'D': 365,
+                   'W':52, 
+                   'M': 12, 
+                   'Y': 1}  # useful for sorting
     
     def __init__(self, txt):
         firstNum = True
@@ -81,8 +85,15 @@ class Tenor(object):
         
         self.length = int(numTxt)
         self.unit = unit
-        self.timeunit = self._tenorUnits[unit]
+        self.timeunit = self._tenorUnits.get(self.unit, Days)
     
+    @property
+    def term(self):
+        '''
+        Length of tenor in years.
+        '''
+        return float(self.length) / float(self._tenorLength.get(self.unit, 1.0))
+        
     @property
     def qlPeriod(self):
         return Period(self.length, self.timeunit)

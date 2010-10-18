@@ -3,11 +3,26 @@ Created on Oct 14, 2009
 
 @author: bartmosley
 '''
+from math import exp, log
+
 import bgpy.QL as ql
+import bgpy.QL.termstructure as ts
 
 FixedPayer = ql.VanillaSwap.Payer
 FixedReceiver = ql.VanillaSwap.Receiver
 
+def forwardSpreadDepo(spread_):
+    '''
+    Convert instantaneous forward rate spread to actual360 depo rate
+    '''
+    return 2.0 * (exp((91./360.) * spread_) ** (180./91.) - 1.0)
+
+def depoSpreadforward(spread_):
+    '''
+    Convert actual360 depo rate to instantaneous forward rate spread
+    '''
+    return (-360./91.)*log( (1.+spread_/2.)**(-91./180.))
+    
 class USDLiborSwap(object):
     fixedLegFrequency = ql.Semiannual
     fixedLegAdjustment = ql.Unadjusted
@@ -20,8 +35,6 @@ class USDLiborSwap(object):
     floatingLegTenor = ql.Period(3, ql.Months)
     calendar = ql.TARGET()
     
-    pricingEngine = None
-    
     def __init__(self, termstructure, startDate, termDate, fixedRate, PayFlag=1, 
                 spread=0.0, notionalAmount=100.0,
                 setPriceEngine=False):
@@ -31,8 +44,9 @@ class USDLiborSwap(object):
         self.startDate = startDate
         self.termDate = termDate
         self.spread = spread
-        self.fixedRate = fixedRate
         
+        self.fixedRate = fixedRate
+                
         self.floatingLegIndex_  = ql.USDLibor(self.floatingLegTenor, 
                                               self.termstructure.handle)
         
@@ -59,8 +73,10 @@ class USDLiborSwap(object):
                                   self.floatingLegDayCounter)
 
         if setPriceEngine:
-            self.pricingEngine = termstructure.swapEngine()
+            self.pricingEngine = self.termstructure.swapEngine()
             self.swap.setPricingEngine(self.pricingEngine)
+        else:
+            self.pricingEngine = None
     
     @property
     def fixedSchedule(self):
@@ -74,11 +90,14 @@ class USDLiborSwap(object):
         
     def value(self, termstructure_=None):
         if termstructure_:
-            self.swap.setPricingEngine(termstructure_.swapEngine())
-        elif (not self.pricingEngine and hasattr(self, "termstructure")):
-            self.swap.setPricingEngine(self.termstructure.swapEngine())
-        else:
-            return None
+            self.pricingEngine = termstructure_.swapEngine()
+            self.swap.setPricingEngine(self.pricingEngine)
+        elif not self.pricingEngine:
+            if self.termstructure:
+                self.pricingEngine = self.termstructure.swapEngine()
+                self.swap.setPricingEngine(self.pricingEngine)
+            else:
+                return None
             
         return self.swap.NPV()
 
@@ -95,13 +114,15 @@ class USDLiborSwaption(object):
                 callFrequency=ql.Semiannual
                 ):
         self.termstructure = termstructure
+        self.spread = spread
         firstCallDate, termDate = map(ql.bgDate, [firstCallDate, termDate])
-        swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, fixedRate, 
-                            PayFlag, spread, 
+        self.swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, 
+                            fixedRate, 
+                            PayFlag, self.spread, 
                             notionalAmount).swap
         
         if bermudan:
-            lastCallDate = swap.fixedSched.date(swap.fixedSched.size()-2)
+            lastCallDate = self.swap.swap.fixedSched.date(self.swap.fixedSched.size()-2)
             schedTenor = ql.Period(callFrequency)
             
             bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
@@ -115,8 +136,7 @@ class USDLiborSwaption(object):
         else:
             self.exercise = ql.EuropeanExercise(firstCallDate)
         
-        self.swaption = ql.Swaption(swap, self.exercise)
-
+        self.swaption = ql.Swaption(self.swap, self.exercise)
     
     def value(self, vol, termstructure_=None, model=ql.BlackKarasinski):
         '''
@@ -130,7 +150,9 @@ class USDLiborSwaption(object):
         self.swaption.setPricingEngine(engine)
         
         return self.swaption.NPV()
+    
 
+        
 class BasisSwap(ql.Swap):
     '''
     Models a swap paying/receiving a percent of libor index versus basis index plus a spread.
@@ -222,3 +244,4 @@ class BasisSwap(ql.Swap):
             self.setPricingEngine(self.termstructure.swapEngine())
 
         return self.NPV()
+    

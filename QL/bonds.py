@@ -72,14 +72,13 @@ class MuniBondType(BondType):
             d[k] = getattr(self, k)
         return d
 
-class BondCallFeature(object):
+class Callable(object):
     def __init__(self, firstcall=None, callprice=None, parcall=None, 
                  frequency=ql.Semiannual, redvalue=100., ObjectId=None):
         '''
         Create a call feature.
         '''
         # make sure we have a QuantLib compliant set of dates
-        # will return ql.Date() if None.
         firstcall, parcall = map(bgDate, [firstcall, parcall])
         self.firstcall = firstcall 
         self.callprice = callprice
@@ -130,25 +129,27 @@ class SimpleBond(object):
         settledate = bgDate(settledate)
         if not settledate.serialNumber():
             evalDate = ql.Settings.instance().getEvaluationDate() 
-            self.settle = self.calendar.advance(evalDate, self.settlementdays, 
+            self.settle_ = self.calendar.advance(evalDate, self.settlementdays, 
                                                           ql.Days)
         else:
-            self.settle = settledate
+            self.settle_ = settledate
             
         #TODO: This maybe can be more robust for non-standard frequencies
         #      It works for annual, quarterly & semi-annual.
         #      It's inelegant to call value__ but I blame QuantLib
         freq = float(self.frequency.value__)
-        self.term = freq * self.daycount.yearFraction(self.settle, 
+        self.term = freq * self.daycount.yearFraction(self.settle_, 
                                                       self.maturity)
         self.nper = floor(self.term)
         self.frac = self.term - self.nper
 
         return self
-        
+   
     def getSettlement(self):
-        return self.settle
-        
+        return self.settle_
+   
+    settlementDate = property(getSettlement, setSettlement)
+    
     def CallList(self):
         calllist = []
         if self.callfeature:
@@ -174,28 +175,7 @@ class SimpleBond(object):
                     price = price - dtp
                 
         return calllist
-
-    @staticmethod
-    def CallFromList(calllist):
-        '''Turns call list into a QL Callability Schedule'''
-
-        callsched = CallabilitySchedule()
-
-        for calldate, price in calllist:
-        
-            callPx = CallabilityPrice(price, CallabilityPrice.Clean)
-            callDt = Callability(callPx, Callability.Call, calldate)
-
-            callsched.push_back(callDt)
-
-        return callsched            
-        
-    def CallSchedule(self):
-        '''Turns bond's call list into a QL Callability Schedule'''
-        calllist = self.CallList()
-        
-        return self.CallFromList(calllist)
-
+       
     def maxPrice(self):
         '''determines the price if yieldtoworst = 0 (or close to it)'''
         self.maxPrice = self.toPrice(0.000001)
@@ -230,7 +210,7 @@ class SimpleBond(object):
             toprice = self.redvalue
 
             if self.calllist:
-                earliestcall= calendar.advance(self.settle, ql.Period(self.paytenor))
+                earliestcall= calendar.advance(self.settle_, ql.Period(self.paytenor))
                 
                 for call in self.calllist:
                     calldt, callpx = call
@@ -244,7 +224,7 @@ class SimpleBond(object):
                                    self.oid,
                                    bondtype=self.bondtype, 
                                    redvalue=callpx,
-                                   settledate=self.settle)
+                                   settledate=self.settle_)
                         
                         newval = getattr(b,ytmfunc)(level)
                         
@@ -364,34 +344,45 @@ class SimpleBond(object):
     def __repr__(self):
         return self.__str__()
     
-    def FixedRateBond(self, pricingEngine=None):
-        '''Creates a QuantLib FixedRateBond object as the QLBond attribute
-        '''
-        cpn_sch = ql.DoubleVector((1., self.coupon))
-        bnd_sched = ql.Schedule(self.issuedate, self.maturity, ql.Period(self.frequency),
-                                ql.TARGET(), 
-                                self.termconvention, self.termconvention, 
-                                ql.DateGeneration.Rule.Backward, 
-                                False)
-
-        self.QLBond = ql.FixedRateBond(self.settlementdays, self.face, bnd_sched, cpn_sch,
-                                       self.daycount,
-                                       self.payconvention, self.face, self.issuedate)
-        if pricingEngine:
-            self.QLBond.setPricingEngine(pricingEngine)
-        
-        return self.QLBond
-    
     def fairSwapRate(self, termstructure):
         '''
         calculate the fair swap rate matching structure of non-call portion of bond
         '''
         return USDLiborSwap(termstructure, 
-                            self.settle, 
+                            self.settle_, 
                             self.maturity, self.coupon, 
                             PayFlag=1, spread=0.0,
-                            setPriceEngine=True).fairRate()
+                            setPriceEngine=True).swap.fairRate()
 
+    def assetSwap(self, termstructure, spread_=0.0):
+        '''
+        Creates the swaps used to model bond as an asset swap.
+        baseswap = underlying noncallable bond asset swap.
+        swaption = swaption replicating call feature, if any.
+        '''
+        
+        self.baseswap = USDLiborSwap(termstructure, 
+                            self.settle_, 
+                            self.maturity, self.coupon, 
+                            PayFlag=1, spread=spread_,
+                            notionalAmount = 100.0)
+        
+        self.swaption = None
+        if self.calllist:
+            firstcall, callprice = self.calllist[0]
+            self.swaption = USDLiborSwaption(termstructure, 
+                                    firstcall, 
+                                    self.maturity, self.coupon, 
+                                    PayFlag=0, spread=spread_,
+                                    notionalAmount = 100.0)
+    
+    def oasValue(self, termstructure):
+        #TODO: use spreaded curve to calc oas values,
+        #      incorporate volatility
+        
+        self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
+        self.assetSwap(termstr)
+        
     def assetSwapSpread(self, termstructure, bondyield=None, price=None, 
                               vol=1e-7, model=ql.BlackKarasinski):
         '''
@@ -432,27 +423,15 @@ class SimpleBond(object):
         Assumes termstructure object is derivative of TermStructureModel class,
         or QuantLib YieldTermStructureHandle.
         '''
+        self.assetSwap(termstructure, spread_)
         
-        asw1 = USDLiborSwap(termstructure, 
-                            self.settle, 
-                            self.maturity, self.coupon, 
-                            PayFlag=1, spread=spread_,
-                            setPriceEngine=True,
-                            notionalAmount = 100.0)
-        prm = asw1.value()
-        
-        if self.calllist:
-            firstcall, callprice = self.calllist[0]
-            asw2 = USDLiborSwaption(termstructure, 
-                                    firstcall, 
-                                    self.maturity, self.coupon, 
-                                    PayFlag=0, spread=spread_,
-                                    notionalAmount = 100.0)
-            prm += asw2.value(vol, model=model)
+        prm = self.baseswap.value()
+        if self.swaption:
+            prm += self.swaption.value(vol, model=model)
         
         return prm 
-    settlementDate = property(getSettlement, setSettlement)
         
+  
 class MuniBond(MuniBondType,SimpleBond):
     '''
     Muni Bond Object, inherits from SimpleBond
@@ -466,7 +445,7 @@ class MuniBond(MuniBondType,SimpleBond):
         
     def qtax(self, settle=None, ptsyear=0.25):
         """Calculate de minimus cut-off for market discount bonds"""
-        if settle or not self.settle:
+        if settle or not self.settle_:
             self.setSettlement(settle)
             
         if self.oid and self.oid > self.coupon:
@@ -519,7 +498,7 @@ class MuniBond(MuniBondType,SimpleBond):
     def assetSwapHedgeRatio(self, basisTermstructure):
         baseTenor = basisTermstructure.tenorParRatio("10Y")
         basisSwap = BasisSwap(basisTermstructure.disc_termstr, basisTermstructure,
-                              self.settle, self.maturity, 
+                              self.settle_, self.maturity, 
                               baseTenor)
         return basisSwap.fairRatio()
     
@@ -532,7 +511,7 @@ class MuniBond(MuniBondType,SimpleBond):
         else:
             termstructure = basisTermstructure.disc_termstr
         return USDLiborSwap(termstructure, 
-                            self.settle, 
+                            self.settle_, 
                             self.maturity, self.coupon, 
                             PayFlag=1, spread=0.0,
                             setPriceEngine=True).fairRate()
@@ -548,7 +527,7 @@ class MuniBond(MuniBondType,SimpleBond):
             ratio = self.assetSwapHedgeRatio(basisTermstructure)
         
         asw1 = USDLiborSwap(termstructure, 
-                          self.settle, 
+                          self.settle_, 
                           self.maturity, self.coupon/ratio, 
                           PayFlag=1, spread=spread_,
                           setPriceEngine=True,
