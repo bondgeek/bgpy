@@ -375,7 +375,7 @@ class SimpleBond(object):
                                     self.maturity, self.coupon, 
                                     PayFlag=0, spread=spread_,
                                     notionalAmount = 100.0)
-    
+        
     def oasValue(self, termstructure):
         #TODO: use spreaded curve to calc oas values,
         #      incorporate volatility

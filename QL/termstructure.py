@@ -16,9 +16,9 @@ class TermStructureModel(object):
     daycount = ql.ActualActualISDA
     calendar = ql.TARGET()
 
-    def __init__(self, datadivisor=1.000, settledays=2, curvelabel=None):
+    def __init__(self, datadivisor=1.000, settledays=2, label=None):
         
-        self.curvelabel = curvelabel
+        self.label = label
         self.datadivisor = datadivisor
         self.settledays = settledays
         
@@ -88,7 +88,7 @@ class TermStructureModel(object):
         Returns par rate for given tenor -- e.g., termstr.tenorpar('10Y') 
         '''
         discount = self.curve.discount              #function calls
-        advance = ql.TARGET().advance         #function calls
+        advance = ql.TARGET().advance               #function calls
         tnr = ql.Tenor(tenor)
         settle = self.curve.referenceDate()
         
@@ -148,8 +148,8 @@ class SimpleCurve(TermStructureModel):
     accuracy = 1e-12
     
     def __init__(self, curvedata=None, curvedate=None, datadivisor=1.000,
-                     settledays=2, setIborIndex=True, curvelabel=None):
-        TermStructureModel.__init__(self, datadivisor, settledays, curvelabel)
+                     settledays=2, setIborIndex=True, label=None):
+        TermStructureModel.__init__(self, datadivisor, settledays, label)
 
         self.ratehelpers = None
         self.instruments_ = ql.RateHelperVector()
@@ -218,8 +218,8 @@ class SimpleCurve(TermStructureModel):
         self.upToDate = True
     
     def __str__(self):
-        if self.curvelabel:
-            return self.curvelabel
+        if self.label:
+            return self.label
         else:
             return "SimpleCurve"
     
@@ -228,9 +228,9 @@ class DiscountCurve(TermStructureModel):
     Fits a set of pure discount factors to a term structure.
     '''
     def __init__(self, curvedata=None, settledays = 2,
-                 interp = ql.LogLinear(), datadivisor=1.0, curvelabel=None):
+                 interp = ql.LogLinear(), datadivisor=1.0, label=None):
     
-        TermStructureModel.__init__(self, datadivisor, settledays, curvelabel)
+        TermStructureModel.__init__(self, datadivisor, settledays, label)
         self.interp = interp
         
         if curvedata:
@@ -269,7 +269,7 @@ class SpreadedCurve(TermStructureModel):
     
         TermStructureModel.__init__(self, termstructure.datadivisor, 
                                           termstructure.settledays, 
-                                          termstructure.curvelabel)
+                                          termstructure.label)
         self.spread_ = ql.SimpleQuote(spread)
         curve = ql.ForwardSpreadedTermStructure(termstructure.handle,
                                                 ql.QuoteHandle(self.spread_))
