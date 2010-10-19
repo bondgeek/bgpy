@@ -98,7 +98,8 @@ class TermStructureModel(object):
             return self.forwardDepo(settle, enddt, self.depo_daycount)
 
         tnrlen = tnr.length * 12 + 6
-        pvals = [discount(advance(settle, n, ql.Months), extrapolate=True)
+        # second argument to discount allows extrapolation
+        pvals = [discount(advance(settle, n, ql.Months), True)
                   for n in range(0, tnrlen, 6)]
         
         return 2.0 * (1.0 - pvals[-1]/pvals[0]) * pvals[0] / sum(pvals[1:])
@@ -118,13 +119,13 @@ class TermStructureModel(object):
             return self.forwardDepo(settle, enddt, self.depo_daycount)
 
         tnrlen = tnr.length * 12 + 6
-        fixedPvals = [discount(advance(settle, n, ql.Months), extrapolate=True)
+        fixedPvals = [discount(advance(settle, n, ql.Months), True)
                   for n in range(0, tnrlen, 6)]
                   
         fltlen = tnr.length * 12 + 3
         fltDates = [advance(settle, n, ql.Months) for n in range(0, fltlen, 3)]
         fltDates = zip(fltDates[:-1], fltDates[1:])
-        fltPvals = [discount(d1)*self.forwardPayment(d0, d1) 
+        fltPvals = [discount(d1, True)*self.forwardPayment(d0, d1) 
                     for d0, d1 in fltDates]
         
         return 2.0 * sum(fltPvals) / sum(fixedPvals[1:])
@@ -276,14 +277,13 @@ class SpreadedCurve(TermStructureModel):
         curve.enableExtrapolation()   
         self.curve.linkTo(curve)
 
-    @property
-    def spread(self):
+    def getSpread(self):
         return self.spread_.value()
     
-    @spread.setter
-    def spread(self, newvalue):
+    def setSpread(self, newvalue):
         self.spread_.setValue(newvalue)
-    
+        
+    spread = property(getSpread, setSpread)    
     
         
 class RatioBasisCurve(object):

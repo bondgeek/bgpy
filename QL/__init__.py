@@ -13,12 +13,25 @@ try:
 except:
     CONFIG_NAME = 'PY'
     
+    
 from QuantLib import *
 
 from bgpy import aliasReferences as _aliasReferences
 from bgdate import bgDate, dateTuple, dateFirstOfMonth
 
 _createAliases = vars().update
+
+def freqValue(freq_):
+    '''
+    deals with different treatments of enumerations in C++/C# bindings
+    '''
+    return getattr(freq_, "value__", freq_)
+
+if CONFIG_NAME == 'PY':
+    # Matching c-sharp QuantLib bindings
+    # because you can't go the other way (c++ to c#)
+    RateHelperVector.Clear = RateHelperVector.clear
+    RateHelperVector.Add = RateHelperVector.append
     
 #
 # Aliases 
@@ -39,8 +52,9 @@ if CONFIG_NAME == 'IPY':
     _createAliases(_aliasReferences(Frequency, vars()))
     _createAliases(_aliasReferences(Compounding, vars()))
     _createAliases(_aliasReferences(BusinessDayConvention, vars()))
-    _createAliases(_aliasReferences(DateGeneration.Rule, vars()))
     _createAliases(_aliasReferences(TimeUnit, vars()))
+    _createAliases(_aliasReferences(DateGeneration.Rule, vars()))
+
     
 else:
     USGovernmentBond = UnitedStates(UnitedStates.GovernmentBond)
@@ -51,7 +65,7 @@ else:
     ActualActualISDA = ActualActual(ActualActual.ISDA)
     Thirty360Bond = Thirty360(Thirty360.BondBasis)
     Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
-
+    _createAliases(_aliasReferences(DateGeneration, vars()))
 
 class Tenor(object):
     _tenorUnits = {'D': Days,
