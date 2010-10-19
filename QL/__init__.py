@@ -59,7 +59,7 @@ else:
     ActualActualISDA = ActualActual(ActualActual.ISDA)
     Thirty360Bond = Thirty360(Thirty360.BondBasis)
     Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
-
+    _createAliases(_aliasReferences(DateGeneration, vars()))
 
 class Tenor(object):
     _tenorUnits = {'D': Days,

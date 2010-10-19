@@ -44,6 +44,7 @@ def aliasReferences(namespc, oldspace=None, ignorePrivate=True):
     newspace = {}
     if not oldspace:
         oldspace = newspace
+        
     for _v in dir(namespc):
         if ignorePrivate and (_v.startswith("_") or _v.endswith("_")):
             continue
