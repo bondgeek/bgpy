@@ -13,12 +13,19 @@ try:
 except:
     CONFIG_NAME = 'PY'
     
+    
 from QuantLib import *
 
 from bgpy import aliasReferences as _aliasReferences
 from bgdate import bgDate, dateTuple, dateFirstOfMonth
 
 _createAliases = vars().update
+
+if CONFIG_NAME == 'PY':
+    # Matching c-sharp QuantLib bindings
+    # because you can't go the other way (c++ to c#)
+    RateHelperVector.Clear = RateHelperVector.clear
+    RateHelperVector.Add = RateHelperVector.append
     
 #
 # Aliases 
@@ -39,8 +46,9 @@ if CONFIG_NAME == 'IPY':
     _createAliases(_aliasReferences(Frequency, vars()))
     _createAliases(_aliasReferences(Compounding, vars()))
     _createAliases(_aliasReferences(BusinessDayConvention, vars()))
-    _createAliases(_aliasReferences(DateGeneration.Rule, vars()))
     _createAliases(_aliasReferences(TimeUnit, vars()))
+    _createAliases(_aliasReferences(DateGeneration.Rule, vars()))
+
     
 else:
     USGovernmentBond = UnitedStates(UnitedStates.GovernmentBond)

@@ -33,7 +33,7 @@ version_string = "bgpy:  BG Tools version %d.%d.%d " % version
 HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', '.'))
 PathJoin = os.path.join
 
-def aliasReferences(namespc, oldspace=None):
+def aliasReferences(namespc, oldspace=None, ignorePrivate=True):
     '''
     Take a reference to a namespace and create alias dict object 
     to be passed to vars().update
@@ -45,6 +45,8 @@ def aliasReferences(namespc, oldspace=None):
     if not oldspace:
         oldspace = newspace
     for _v in dir(namespc):
-        if not newspace.get(_v, None):
+        if ignorePrivate and (_v.startswith("_") or _v.endswith("_")):
+            continue
+        if not oldspace.get(_v, None):
             newspace[_v] = getattr(namespc, _v, None)
     return newspace
