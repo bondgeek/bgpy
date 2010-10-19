@@ -167,7 +167,7 @@ class SimpleCurve(TermStructureModel):
         curvedata = self.cleancurvedata(curvedata)
         
         if self.ratehelpers:
-            self.ratehelpers.update(curvedata, self.datadivisor)
+            self.ratehelpers.update(curvedata)
         else:
             self.ratehelpers = HelperWarehouse(curvedata.keys(), 
                                                curvedata.values(), 

@@ -7,7 +7,7 @@ Created on Jan 24, 2010
 '''
 
 import bgpy.QL as ql
-from bgpy.math.solvers import Secant
+from bgpy.math.solvers import Secant, SolverExceptions
 from bgpy.QL import bgDate
 
 import bgpy.QL.termstructure as ts
@@ -74,7 +74,7 @@ class MuniBondType(BondType):
             d[k] = getattr(self, k)
         return d
 
-class Callable(object):
+class Call(object):
     def __init__(self, firstcall=None, callprice=None, parcall=None, 
                  frequency=ql.Semiannual, redvalue=100., ObjectId=None):
         '''
@@ -98,8 +98,9 @@ class SimpleBond(object):
     Bond Object: 
     coupon, maturity, issuedate, oid, callfeature, bondtype, redvalue
     """
-    def __init__(self,coupon, maturity, issuedate=None, oid=None, 
-                 callfeature=None, bondtype=None, redvalue=100.,
+    def __init__(self,coupon, maturity, 
+                 callfeature=None, oid=None, issuedate=None, 
+                 bondtype=None, redvalue=100.,
                  settledate=None):
                  
         maturity, issuedate, settledate = map(bgDate, [maturity, issuedate, 
@@ -125,6 +126,8 @@ class SimpleBond(object):
             self.calllist = self.CallList()
 
         self.setSettlement(settledate)
+        self.baseswap = None
+        self.swaption = None
     
     def setSettlement(self, settledate=None):
         '''change settlement'''
@@ -165,7 +168,12 @@ class SimpleBond(object):
             calldate = call.firstcall
             
             while ql.ActualActual().dayCount(calldate, self.maturity) > 0:
-                calllist.append((calldate,price))
+                cbond = SimpleBond(self.coupon, calldate, 
+                                   issuedate = self.issuedate, 
+                                   oid=self.oid,
+                                   bondtype=self.bondtype, 
+                                   redvalue=price)
+                calllist.append((calldate,price, cbond))
                 freq = ql.Period(call.frequency)
                 calldate = calendar.advance(calldate, freq, ql.Unadjusted)
                 
@@ -213,20 +221,14 @@ class SimpleBond(object):
                 earliestcall= calendar.advance(self.settle_, ql.Period(self.paytenor))
                 
                 for call in self.calllist:
-                    calldt, callpx = call
+                    calldt, callpx, cbond = call
                     
                     if all([(self.daycount.dayCount(earliestcall, calldt) >= 0),
                             (callpx <= level or not cmplevel), 
                             (calldt < todate or callpx < toprice)]):
                         
-                        b = SimpleBond(self.coupon, calldt, 
-                                   self.issuedate, 
-                                   self.oid,
-                                   bondtype=self.bondtype, 
-                                   redvalue=callpx,
-                                   settledate=self.settle_)
-                        
-                        newval = getattr(b,ytmfunc)(level)
+                        cbond.settlemenDate = self.settle_
+                        newval = getattr(cbond,ytmfunc)(level)
                         
                         if newval <= val:
                             todate = calldt
@@ -299,46 +301,25 @@ class SimpleBond(object):
     def toYTM(self, price):
         '''
         Calculate yield to maturity from price.
-        Secant search is sufficient as price is generally well-behaved.
+        Secant search is sufficient as price is generally well-behaved,
+        and coupon, current yield are natural initial values.
         '''
         if(round(price,6)==100.0):
             yld=self.coupon
         else:
             if(self.coupon > 0.0):
-                p0 = 100.0
                 y0 = self.coupon
                 yg = 100.*self.coupon / price
             else:
-                y0 = .05
-                p0 = self.ytmToPrice(y0)
-                yg = .0501
-            p1 = self.ytmToPrice(yg)
-            pdiff = p1-price
-            
-            for n in range(BondExceptions.MAX_PY_ITERATIONS+1):
-                try:
-                    dYdP = (yg - y0) / (p1 - p0)
-                    p0 = p1
-                    y0 = yg
-                    yg -= dYdP * pdiff
-                    try:
-                        p1 = self.ytmToPrice(yg)
-                    except BondExceptions, e:
-                        raise 
-                        
-                    pdiff = p1 - price
-                    if abs(pdiff) <= .00000001:
-                        break
-                except ZeroDivisionError:
-                    if abs(yg - y0) < 0.0000001:
-                        break
-                    else:
-                        raise
-                    
-            if n == BondExceptions.MAX_PY_ITERATIONS:
-                raise BondExceptions, BondExceptions.MAX_PY_ITERATIONS_MSG
-            
-            yld = yg 
+                y0 = getattr(self, "oid", .05)
+                yg = 100.*y0 / price if self.oid else .0501
+
+            try:
+                yld = Secant(y0, yg, self.ytmToPrice, price)
+            except:
+                print "Solver error in toYTM"
+                raise
+                
         return yld
     
     def __str__(self):
@@ -362,8 +343,7 @@ class SimpleBond(object):
         Creates the swaps used to model bond as an asset swap.
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
-        '''
-        
+        '''        
         self.baseswap = USDLiborSwap(termstructure, 
                             self.settle_, 
                             self.maturity, self.coupon, 
@@ -380,11 +360,12 @@ class SimpleBond(object):
                                     notionalAmount = 100.0)
         
     def oasValue(self, termstructure):
-        #TODO: use spreaded curve to calc oas values,
-        #      incorporate volatility
-        
+        '''
+        OAS given spread
+        '''
         self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
-        self.assetSwap(termstr)
+        if not self.baseswap:
+            self.assetSwap(termstr, 0.0)
         
     def assetSwapSpread(self, termstructure, bondyield=None, price=None, 
                               vol=1e-7, model=ql.BlackKarasinski):
@@ -401,7 +382,7 @@ class SimpleBond(object):
         # objective function is well-behaved, so secant search is sufficient
         # set objective value & value function
         objValue = -(price - 100.0) 
-        valueFunc = lambda x_: self.assetSwapPremium(termstructure, x_, vol, model=model)
+        valueFunc = lambda x_: self.swapPremium(termstructure, x_, vol, model=model)
         
         # set initial value and initial guess
         x_ = 0.0
@@ -409,8 +390,7 @@ class SimpleBond(object):
         
         return Secant(x_, x1, valueFunc, objValue)
         
-        
-    def assetSwapPremium(self, termstructure, spread_,
+    def swapPremium(self, termstructure, spread_,
                          vol=1e-7, model=ql.BlackKarasinski):
         '''
         Calculate asset swap premium, given spread and termstructure.
@@ -418,7 +398,7 @@ class SimpleBond(object):
         or QuantLib YieldTermStructureHandle.
         '''
         self.assetSwap(termstructure, spread_)
-        
+            
         prm = self.baseswap.value()
         if self.swaption:
             prm += self.swaption.value(vol, model=model)
@@ -432,10 +412,12 @@ class MuniBond(MuniBondType,SimpleBond):
     Override asset swap methods to allow gross up coupon and apply leverage. (instrument based approach).
     
     '''
-    def __init__(self, coupon, maturity, issuedate=None, oid=None,callfeature=None,
+    def __init__(self, coupon, maturity, callfeature=None,
+                        oid=None,  issuedate=None,
                        redvalue=100.0):
-        SimpleBond.__init__(self, coupon, maturity, issuedate, oid, callfeature, MuniBondType(),
-                              redvalue)
+        SimpleBond.__init__(self, coupon, maturity, callfeature, 
+                                  oid, issuedate, MuniBondType(),
+                                  redvalue)
         
     def qtax(self, settle=None, ptsyear=0.25):
         """Calculate de minimus cut-off for market discount bonds"""
