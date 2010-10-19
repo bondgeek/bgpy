@@ -21,6 +21,12 @@ from bgdate import bgDate, dateTuple, dateFirstOfMonth
 
 _createAliases = vars().update
 
+def freqValue(freq_):
+    '''
+    deals with different treatments of enumerations in C++/C# bindings
+    '''
+    return getattr(freq_, "value__", freq_)
+
 if CONFIG_NAME == 'PY':
     # Matching c-sharp QuantLib bindings
     # because you can't go the other way (c++ to c#)

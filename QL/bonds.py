@@ -7,6 +7,7 @@ Created on Jan 24, 2010
 '''
 
 import bgpy.QL as ql
+from bgpy.math.solvers import Secant
 from bgpy.QL import bgDate
 
 import bgpy.QL.termstructure as ts
@@ -17,11 +18,12 @@ from math import floor, fmod
 #globals
 calendar = ql.TARGET()
 
+    
 #class definitions
 class BondExceptions(Exception):
     MAX_PY_ITERATIONS = 24
     MAX_PY_ITERATIONS_MSG = "Max Iterations--%d--reached in price/yield calc" % MAX_PY_ITERATIONS
-    MIN_YLD = 0.00000001
+    MIN_YLD = 1e-7
     NEG_YIELD_MSG = "Negative yield in ytmToPrice" 
 
 class BondType(object):
@@ -130,14 +132,13 @@ class SimpleBond(object):
         if not settledate.serialNumber():
             evalDate = ql.Settings.instance().getEvaluationDate() 
             self.settle_ = self.calendar.advance(evalDate, self.settlementdays, 
-                                                          ql.Days)
+                                                           ql.Days)
         else:
             self.settle_ = settledate
             
         #TODO: This maybe can be more robust for non-standard frequencies
         #      It works for annual, quarterly & semi-annual.
-        #      It's inelegant to call value__ but I blame QuantLib
-        freq = float(self.frequency.value__)
+        freq = float(ql.freqValue(self.frequency))
         self.term = freq * self.daycount.yearFraction(self.settle_, 
                                                       self.maturity)
         self.nper = floor(self.term)
@@ -157,9 +158,8 @@ class SimpleBond(object):
             call = self.callfeature
             if ((call.parcall > call.firstcall) and 
                 (call.callprice > self.face)):
-                callyears = self.daycount.yearFraction(call.firstcall,
-                                                       call.parcall)
-                dtp = (call.callprice-self.face)/(call.frequency.value__*callyears)
+                callyears = self.daycount.yearFraction(call.firstcall, call.parcall)
+                dtp = (call.callprice-self.face)/(ql.freqValue(call.frequency)*callyears)
             
             price = call.callprice
             calldate = call.firstcall
@@ -265,7 +265,7 @@ class SimpleBond(object):
         if (self.frac==0):
                 return 0
         else:
-                return (1.-self.frac)*self.coupon/self.frequency.value__
+                return (1.-self.frac)*self.coupon/ql.freqValue(self.frequency)
             
     def ytmToPrice(self, yld):
         """calculates price given yield"""    
@@ -275,9 +275,9 @@ class SimpleBond(object):
         if(yld==self.coupon):
             price = 100.0
         else:
-            #TODO:  QuantLib / C-# implimentation requires calling value__
-            cpn = self.coupon/self.frequency.value__
-            y = yld/self.frequency.value__
+            freq_ = ql.freqValue(self.frequency)
+            cpn = self.coupon/freq_
+            y = yld/freq_
             u = cpn/y
             z = 1. / (1.+y)**self.nper
             t = 1. / (1.+y)**self.frac
@@ -297,7 +297,10 @@ class SimpleBond(object):
         return self.calc(_yield)
        
     def toYTM(self, price):
-        '''yield to maturity from price'''
+        '''
+        Calculate yield to maturity from price.
+        Secant search is sufficient as price is generally well-behaved.
+        '''
         if(round(price,6)==100.0):
             yld=self.coupon
         else:
@@ -395,26 +398,17 @@ class SimpleBond(object):
             print("Problem with bondyield, price inputs: %s %s" % (bondyield, price))
             raise TypeError
         
-        # TODO: should use static swap and spreadedcurve to price asset swaps.
-        prm = -(price - 100.0)
-        x_ = 0.0
-        v_ = self.assetSwapPremium(termstructure, x_, vol, model=model)
+        # objective function is well-behaved, so secant search is sufficient
+        # set objective value & value function
+        objValue = -(price - 100.0) 
+        valueFunc = lambda x_: self.assetSwapPremium(termstructure, x_, vol, model=model)
         
+        # set initial value and initial guess
+        x_ = 0.0
         x1 = bondyield - self.fairSwapRate(termstructure)
-        v1 = self.assetSwapPremium(termstructure, x1, vol, model=model)
-        v_diff = v1 - prm
-        ictr, maxctr = 0, BondExceptions.MAX_PY_ITERATIONS
-        while abs(v_diff) > 1e-7 and abs(x1-x_) > 1e-7 and ictr < maxctr:
-            delta = (v1 - v_) / (x1 - x_)
-            x_ = x1
-            x1 = x1 - v_diff / delta
-            v_ = v1
-            v1 = self.assetSwapPremium(termstructure, x1, vol, model=model)
-            v_diff = v1 - prm
-            ictr += 1
-
-        assert (ictr < maxctr + 1), "Max iterations reached: %s" % x1*100.0
-        return x1
+        
+        return Secant(x_, x1, valueFunc, objValue)
+        
         
     def assetSwapPremium(self, termstructure, spread_,
                          vol=1e-7, model=ql.BlackKarasinski):
