@@ -130,6 +130,11 @@ class SimpleBond(object):
         # initialize swap structures for asset swap analysis
         self.baseswap = None
         self.swaption = None
+        self.assetSwapCoupon = self.coupon    
+        self.assetSwapRatio = 1.0
+        self.spreadType = {"S": self.swapPremium,
+                           "O": self.oasValue}
+
     
     def setSettlement(self, settledate=None):
         '''change settlement'''
@@ -346,7 +351,9 @@ class SimpleBond(object):
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
         '''     
+
         self.assetSwapCoupon = self.coupon / ratio   
+        self.assetSwapRatio = ratio
         self.baseswap = USDLiborSwap(termstructure, 
                             self.settle_, 
                             self.maturity, self.assetSwapCoupon, 
@@ -362,12 +369,14 @@ class SimpleBond(object):
                                     PayFlag=0, spread=spread_,
                                     notionalAmount = 100.0)
         
-    def oasValue(self, termstructure, spread, vol, ratio=1.0, model=ql.BlackKarasinski):
+    def oasValue(self, termstructure, spread, ratio=1.0, vol=1e-7, 
+                       model=ql.BlackKarasinski):
         '''
         OAS given spread
         '''
         self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
-        if not self.baseswap:
+        
+        if not self.baseswap or (abs(ratio - self.assetSwapRatio) > 1e-8):
             self.assetSwap(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread
@@ -377,69 +386,7 @@ class SimpleBond(object):
             prm += self.swaption.value(vol, self.oasCurve, model=model)
         
         return 100.-prm 
-        
-    def assetSwapSpread(self, termstructure, price, vol=1e-7, 
-                              baseSpread = 0.0,
-                              solveRatio = False,
-                              baseRatio = 1.0,
-                              model=ql.BlackKarasinski):
-        '''
-        Calculate asset swap spread given price.
-        Objective function is well-behaved, so secant search is sufficient
-        '''
-        
-        bondyield = self.toYield(price)
-         
-        # set objective value, value function and initial values
-        objValue = -(price - 100.0) 
-        if not solveRatio:
-            valueFunc = lambda x_: self.swapPremium(termstructure, baseSpread+x_, 
-                                                    baseRatio, vol, model=model)
-            
-            x_ = 0.0
-            x1 = bondyield - self.fairSwapRate(termstructure)
-                
-        else:
-            valueFunc = lambda x_: self.swapPremium(termstructure, baseSpread, x_, vol,
-                                                    model=model)
-            
-            x_ = 1.0
-            x1 = bondyield / self.fairSwapRate(termstructure)
-            
-        return Secant(x_, x1, valueFunc, objValue)
 
-    def assetSwapImpVol(self, termstructure, price,
-                              spread = 0.0,
-                              ratio = 1.0,
-                              model=ql.BlackKarasinski):
-        '''
-        Calculate implied vol on asset swap.
-        
-        Enforces bound of 0.0% to 1000% on vol
-        '''
-        if not self.calllist:
-            # bond is not callable
-            return 1e-7
-            
-        bondyield = self.toYield(price)
-         
-        # set objective value, value function and initial values
-        objValue = -(price - 100.0) 
-        
-        valueFunc = lambda x_: self.swapPremium(termstructure, spread, ratio, 
-                                                x_, model=model)
-        
-        # price can't be greater that 'zero' vol price or less than MAXVOL price
-        # let's assume vol <= 1000%
-        if price > (100.0 - valueFunc(1e-7)):
-            return 1e-7
-        if price < (100.0 - valueFunc(10.0)):
-            return 10.0
-            
-        x_ = 0.09
-        x1 = 0.10            
-        return Secant(x_, x1, valueFunc, objValue)
-            
     def swapPremium(self, termstructure, spread_, ratio_ = 1.0,
                          vol=1e-7, model=ql.BlackKarasinski):
         '''
@@ -454,7 +401,72 @@ class SimpleBond(object):
             prm += self.swaption.value(vol, model=model)
         
         return prm 
+                
+    def assetSwapSpread(self, termstructure, price, vol=1e-7, 
+                              baseSpread = 0.0,
+                              solveRatio = False,
+                              baseRatio = 1.0,
+                              spreadType = "S",
+                              model=ql.BlackKarasinski):
+        '''
+        Calculate asset swap spread given price.
+        Objective function is well-behaved, so secant search is sufficient
+        '''
+        spreadFunc = self.spreadType.get(spreadType, self.swapPremium)
+ 
+        bondyield = self.toYield(price)
+         
+        # set objective value, value function and initial values
+        objValue = -(price - 100.0) 
+        if not solveRatio:
+            valueFunc = lambda x_: spreadFunc(termstructure, baseSpread+x_, 
+                                              baseRatio, vol, model=model)
+            x_ = 0.0
+            x1 = bondyield - self.fairSwapRate(termstructure)
+                
+        else:
+            valueFunc = lambda x_: spreadFunc(termstructure, baseSpread, x_, vol,
+                                              model=model)
+            x_ = 1.0
+            x1 = bondyield / self.fairSwapRate(termstructure)
+            
+        return Secant(x_, x1, valueFunc, objValue)
+
+    def assetSwapImpVol(self, termstructure, price,
+                              spread = 0.0,
+                              ratio = 1.0,
+                              spreadType = "S",
+                              model=ql.BlackKarasinski):
+        '''
+        Calculate implied vol on asset swap.
         
+        Enforces bound of 0.0% to 1000% on vol
+        '''
+        spreadFunc = self.spreadType.get(spreadType, self.swapPremium)
+        
+        if not self.calllist:
+            # bond is not callable
+            return 1e-7
+            
+        bondyield = self.toYield(price)
+         
+        # set objective value, value function and initial values
+        objValue = -(price - 100.0) 
+        
+        valueFunc = lambda x_: spreadFunc(termstructure, spread, ratio, 
+                                          x_, model=model)
+        
+        # price can't be greater that 'zero' vol price or less than MAXVOL price
+        # let's assume vol <= 1000%
+        if price > (100.0 - valueFunc(1e-7)):
+            return 1e-7
+        if price < (100.0 - valueFunc(10.0)):
+            return 10.0
+            
+        x_ = 0.09
+        x1 = 0.10            
+        return Secant(x_, x1, valueFunc, objValue)
+
   
 class MuniBond(MuniBondType, SimpleBond):
     '''
