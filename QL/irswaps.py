@@ -43,10 +43,10 @@ class USDLiborSwap(object):
         self.payFlag = FixedPayer if PayFlag else FixedReceiver
         self.startDate = startDate
         self.termDate = termDate
+        self.fixedRate = fixedRate
+        
         self.spread = spread
         
-        self.fixedRate = fixedRate
-                
         self.floatingLegIndex_  = ql.USDLibor(self.floatingLegTenor, 
                                               self.termstructure.handle)
         
@@ -143,15 +143,13 @@ class USDLiborSwaption(object):
         Requires volatility input
         '''
         if termstructure_:
-            engine = termstructure_.swaptionEngine(vol, termstructure_, model)
+            engine = termstructure_.swaptionEngine(vol, model=model)
         else:
             engine = self.termstructure.swaptionEngine(vol, model=model)
         
         self.swaption.setPricingEngine(engine)
         
         return self.swaption.NPV()
-    
-
         
 class BasisSwap(ql.Swap):
     '''

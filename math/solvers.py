@@ -14,6 +14,10 @@ def Secant(x0, x1, valueFunc, objectiveValue):
         '''
         MAXITER, MINVAL = SolverExceptions.MAX_ITERATIONS, SolverExceptions.MIN_VALUE
         
+        #make sure x0 & x1 are different
+        if abs(x1 - x0) <= MINVAL:
+            x1 = x0 + 0.001
+            
         v_ = valueFunc(x0)
         
         ictr = 0

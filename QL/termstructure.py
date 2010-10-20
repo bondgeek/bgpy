@@ -263,17 +263,18 @@ class SpreadedCurve(TermStructureModel):
         "F" = ForwardSpreadTermStructure
         "Z" = ZeroSpreadedTermStructure
     '''
-    types_ = {"F": ql.ForwardSpreadedTermStructure,
-              "Z": ql.ZeroSpreadedTermStructure }
+    spreadedTermStructure_ = {"F": ql.ForwardSpreadedTermStructure,
+                              "Z": ql.ZeroSpreadedTermStructure }
               
-    def __init__(self, termstructure, spread=0.0, type="F"):
+    def __init__(self, termstructure, spread=0.0, type="Z"):
     
         TermStructureModel.__init__(self, termstructure.datadivisor, 
                                           termstructure.settledays, 
                                           termstructure.label)
+        self.spreadType = type                                  
         self.spread_ = ql.SimpleQuote(spread)
-        curve = ql.ForwardSpreadedTermStructure(termstructure.handle,
-                                                ql.QuoteHandle(self.spread_))
+        curve = self.spreadedTermStructure_[type](termstructure.handle,
+                                                  ql.QuoteHandle(self.spread_))
         curve.enableExtrapolation()   
         self.curve.linkTo(curve)
 

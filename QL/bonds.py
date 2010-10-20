@@ -126,6 +126,8 @@ class SimpleBond(object):
             self.calllist = self.CallList()
 
         self.setSettlement(settledate)
+        
+        # initialize swap structures for asset swap analysis
         self.baseswap = None
         self.swaption = None
     
@@ -338,67 +340,115 @@ class SimpleBond(object):
                             PayFlag=1, spread=0.0,
                             setPriceEngine=True).swap.fairRate()
 
-    def assetSwap(self, termstructure, spread_=0.0):
+    def assetSwap(self, termstructure, spread_=0.0, ratio=1.0):
         '''
         Creates the swaps used to model bond as an asset swap.
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
-        '''        
+        '''     
+        self.assetSwapCoupon = self.coupon / ratio   
         self.baseswap = USDLiborSwap(termstructure, 
                             self.settle_, 
-                            self.maturity, self.coupon, 
+                            self.maturity, self.assetSwapCoupon, 
                             PayFlag=1, spread=spread_,
                             notionalAmount = 100.0)
         
         self.swaption = None
         if self.calllist:
-            firstcall, callprice = self.calllist[0]
+            firstcall, callprice, callbond = self.calllist[0]
             self.swaption = USDLiborSwaption(termstructure, 
                                     firstcall, 
-                                    self.maturity, self.coupon, 
+                                    self.maturity, self.assetSwapCoupon, 
                                     PayFlag=0, spread=spread_,
                                     notionalAmount = 100.0)
         
-    def oasValue(self, termstructure):
+    def oasValue(self, termstructure, spread, vol, ratio=1.0, model=ql.BlackKarasinski):
         '''
         OAS given spread
         '''
         self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
         if not self.baseswap:
-            self.assetSwap(termstr, 0.0)
+            self.assetSwap(self.oasCurve, 0.0, ratio)
         
-    def assetSwapSpread(self, termstructure, bondyield=None, price=None, 
-                              vol=1e-7, model=ql.BlackKarasinski):
-        '''
-        Calculate asset swap spread
-        '''
-        try:
-            value = self.calc(bondyield, price, True)
-            bondyield, price = value['bondyield'], value['price']
-        except:
-            print("Problem with bondyield, price inputs: %s %s" % (bondyield, price))
-            raise TypeError
+        self.oasCurve.spread = spread
         
-        # objective function is well-behaved, so secant search is sufficient
-        # set objective value & value function
+        prm = self.baseswap.value(self.oasCurve)
+        if self.swaption:
+            prm += self.swaption.value(vol, self.oasCurve, model=model)
+        
+        return 100.-prm 
+        
+    def assetSwapSpread(self, termstructure, price, vol=1e-7, 
+                              baseSpread = 0.0,
+                              solveRatio = False,
+                              baseRatio = 1.0,
+                              model=ql.BlackKarasinski):
+        '''
+        Calculate asset swap spread given price.
+        Objective function is well-behaved, so secant search is sufficient
+        '''
+        
+        bondyield = self.toYield(price)
+         
+        # set objective value, value function and initial values
         objValue = -(price - 100.0) 
-        valueFunc = lambda x_: self.swapPremium(termstructure, x_, vol, model=model)
-        
-        # set initial value and initial guess
-        x_ = 0.0
-        x1 = bondyield - self.fairSwapRate(termstructure)
-        
+        if not solveRatio:
+            valueFunc = lambda x_: self.swapPremium(termstructure, baseSpread+x_, 
+                                                    baseRatio, vol, model=model)
+            
+            x_ = 0.0
+            x1 = bondyield - self.fairSwapRate(termstructure)
+                
+        else:
+            valueFunc = lambda x_: self.swapPremium(termstructure, baseSpread, x_, vol,
+                                                    model=model)
+            
+            x_ = 1.0
+            x1 = bondyield / self.fairSwapRate(termstructure)
+            
         return Secant(x_, x1, valueFunc, objValue)
+
+    def assetSwapImpVol(self, termstructure, price,
+                              spread = 0.0,
+                              ratio = 1.0,
+                              model=ql.BlackKarasinski):
+        '''
+        Calculate implied vol on asset swap.
         
-    def swapPremium(self, termstructure, spread_,
+        Enforces bound of 0.0% to 1000% on vol
+        '''
+        if not self.calllist:
+            # bond is not callable
+            return 1e-7
+            
+        bondyield = self.toYield(price)
+         
+        # set objective value, value function and initial values
+        objValue = -(price - 100.0) 
+        
+        valueFunc = lambda x_: self.swapPremium(termstructure, spread, ratio, 
+                                                x_, model=model)
+        
+        # price can't be greater that 'zero' vol price or less than MAXVOL price
+        # let's assume vol <= 1000%
+        if price > (100.0 - valueFunc(1e-7)):
+            return 1e-7
+        if price < (100.0 - valueFunc(10.0)):
+            return 10.0
+            
+        x_ = 0.09
+        x1 = 0.10            
+        return Secant(x_, x1, valueFunc, objValue)
+            
+    def swapPremium(self, termstructure, spread_, ratio_ = 1.0,
                          vol=1e-7, model=ql.BlackKarasinski):
         '''
         Calculate asset swap premium, given spread and termstructure.
         Assumes termstructure object is derivative of TermStructureModel class,
         or QuantLib YieldTermStructureHandle.
         '''
-        self.assetSwap(termstructure, spread_)
-            
+        self.assetSwap(termstructure, spread_, ratio_)
+        
         prm = self.baseswap.value()
         if self.swaption:
             prm += self.swaption.value(vol, model=model)
@@ -406,7 +456,7 @@ class SimpleBond(object):
         return prm 
         
   
-class MuniBond(MuniBondType,SimpleBond):
+class MuniBond(MuniBondType, SimpleBond):
     '''
     Muni Bond Object, inherits from SimpleBond
     Override asset swap methods to allow gross up coupon and apply leverage. (instrument based approach).
@@ -478,117 +528,3 @@ class MuniBond(MuniBondType,SimpleBond):
                               baseTenor)
         return basisSwap.fairRatio()
     
-    def fairSwapRate(self, basisTermstructure, basis=True):
-        '''
-        calculate the fair swap rate matching structure of non-call portion of bond
-        '''
-        if basis:
-            termstructure = basisTermstructure
-        else:
-            termstructure = basisTermstructure.disc_termstr
-        return USDLiborSwap(termstructure, 
-                            self.settle_, 
-                            self.maturity, self.coupon, 
-                            PayFlag=1, spread=0.0,
-                            setPriceEngine=True).fairRate()
-    
-    def assetSwapPremium(self, basisTermstructure, spread_, 
-                               vol=1e-7, ratio=None,
-                               model=ql.BlackKarasinski):
-        '''
-        Calculate asset swap premium, given spread
-        '''
-        termstructure = basisTermstructure.disc_termstr
-        if not ratio:
-            ratio = self.assetSwapHedgeRatio(basisTermstructure)
-        
-        asw1 = USDLiborSwap(termstructure, 
-                          self.settle_, 
-                          self.maturity, self.coupon/ratio, 
-                          PayFlag=1, spread=spread_,
-                          setPriceEngine=True,
-                          notionalAmount = 100.0)
-        prm = asw1.value()
-        
-        if self.calllist:
-            firstcall, callprice = self.calllist[0]
-            asw2 = USDLiborSwaption(termstructure, 
-                                    firstcall, 
-                                    self.maturity, self.coupon/ratio, 
-                                    PayFlag=0, spread=spread_,
-                                    notionalAmount = 100.0)
-            prm += asw2.value(vol, model=model)
-        
-        return prm * ratio
-
-    def assetSwapSpread(self, basisTermstructure, bondyield=None, price=None, 
-                              vol=1e-7, ratio=None, model=ql.BlackKarasinski):
-        '''
-        Calculate asset swap spread
-        '''
-        try:
-            value = self.calc(bondyield, price, True)
-            bondyield, price = value['bondyield'], value['price']
-        except:
-            print("Problem with bondyield, price inputs: %s %s" % (bondyield, price))
-            raise TypeError
-            
-        if not ratio:
-            ratio = self.assetSwapHedgeRatio(basisTermstructure)
-        
-        prm = -(price - 100.0)
-        x_ = 0.0
-        v_ = self.assetSwapPremium(basisTermstructure, x_, vol, ratio=ratio, model=model)
-        
-        x1 = bondyield - self.fairSwapRate(basisTermstructure)
-        v1 = self.assetSwapPremium(basisTermstructure, x1, vol, ratio=ratio, model=model)
-        v_diff = v1 - prm
-        ictr, maxctr = 0, BondExceptions.MAX_PY_ITERATIONS
-        while abs(v_diff) > 1e-7 and abs(x1-x_) > 1e-7 and ictr < maxctr:
-            delta = (v1 - v_) / (x1 - x_)
-            x_ = x1
-            x1 = x1 - v_diff / delta
-            v_ = v1
-            v1 = self.assetSwapPremium(basisTermstructure, x1, vol, ratio=ratio, model=model)
-            v_diff = v1 - prm
-            ictr += 1
-
-        assert (ictr < maxctr + 1), "Max iterations reached: %s" % x1*100.0
-        return x1
-
-    def assetSwapRatio(self, basisTermstructure, bondyield=None, price=None, 
-                             spread = 0.0,
-                             vol=1e-7, model=ql.BlackKarasinski):
-        '''
-        Calculate asset swap ratio for given price and spread.  
-        Spread is assumed to be zero, ability to specify spread is provided for flexibility
-        '''
-        try:
-            value = self.calc(bondyield, price, True)
-            bondyield, price = value['bondyield'], value['price']
-        except:
-            print("Problem with bondyield, price inputs: %s %s" % (bondyield, price))
-            raise TypeError
-            
-        termstructure = basisTermstructure.disc_termstr
-        ratio = self.assetSwapHedgeRatio(basisTermstructure)
-        
-        prm = -(price - 100.0)
-        r_ = 1.0
-        v_ = self.assetSwapPremium(basisTermstructure, spread, vol, ratio=r_, model=model)
-        
-        r1 = ratio
-        v1 = self.assetSwapPremium(basisTermstructure, spread, vol, ratio=r1, model=model)
-        v_diff = v1 - prm
-        ictr, maxctr = 0, BondExceptions.MAX_PY_ITERATIONS
-        while abs(v_diff) > 1e-7 and abs(r1-r_)*100.0 > 1e-7 and ictr < maxctr:
-            delta = (v1 - v_) / (r1 - r_)
-            r_ = r1
-            r1 = r1 - v_diff / delta
-            v_ = v1
-            v1 = self.assetSwapPremium(basisTermstructure, spread, vol, ratio=r1, model=model)
-            v_diff = v1 - prm
-            ictr += 1
-
-        assert (ictr < maxctr + 1), "Max iterations reached: %s" % r1*100.0
-        return r1
