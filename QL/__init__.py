@@ -101,6 +101,15 @@ class Tenor(object):
         self.unit = unit
         self.timeunit = self._tenorUnits.get(self.unit, Days)
     
+    def numberOfPeriods(self, frequency=Semiannual):
+        '''
+        Returns the number of integer periods in the tenor based on the given frequency.
+        '''
+        return int(self.term * freqValue(frequency))
+    
+    def advance(self, date_, calendar=TARGET(), adjustType=Unadjusted):
+        return TARGET().advance(date_, self.length, self.timeunit, adjustType)
+        
     @property
     def term(self):
         '''
@@ -116,9 +125,6 @@ class Tenor(object):
     def qlTuple(self):
         return (self.length, self.timeunit)
         
-    def advance(self, date_, calendar=TARGET(), adjustType=Unadjusted):
-        return TARGET().advance(date_, self.length, self.timeunit, adjustType)
-
 def setLiborIndex(libor=None, settlementDate=None, fixingRate=None, liborTenor='3M'):
     '''
     Add a fixing for the appropriate date corresponding to a given settlement date.
