@@ -6,6 +6,8 @@ Created on May 26, 2010
 '''
 import bgpy.QL as ql
 from termstructurehelpers import HelperWarehouse, SwapRate
+
+from math import floor
         
 class TermStructureModel(object):
     '''
@@ -83,28 +85,27 @@ class TermStructureModel(object):
         yfrac = dc.yearFraction(begDate, endDate)
         return (self.forwardDepo(begDate, endDate, dc) + spread) * yfrac
         
-    def tenorpar(self, tenor):
+    def bondpar(self, matDate, dayCount=ql.Thirty360(), frequency=ql.Semiannual):
         '''
-        Returns par rate for given tenor -- e.g., termstr.tenorpar('10Y') 
+        Returns par rate for given maturity
         '''
         discount = self.curve.discount              #function calls
         advance = ql.TARGET().advance               #function calls
-        tnr = ql.Tenor(tenor)
         settle = self.curve.referenceDate()
         
-        if tnr.unit != 'Y':
-            zeroRate = self.curve.zeroRate
-            enddt = advance(settle, tnr.length, tnr.timeunit)
-            return self.forwardDepo(settle, enddt, self.depo_daycount)
-
-        tnrlen = tnr.length * 12 + 6
-        # second argument to discount allows extrapolation
-        pvals = [discount(advance(settle, n, ql.Months), True)
-                  for n in range(0, tnrlen, 6)]
+        freq = float(ql.freqValue(frequency))
+        term = freq * dayCount.yearFraction(settle, matDate)
         
-        return 2.0 * (1.0 - pvals[-1]/pvals[0]) * pvals[0] / sum(pvals[1:])
+        nper = floor(term)
+        frac = term - nper
+        
+        # second argument to discount allows extrapolation
+        pvals = [discount((float(n)+frac)/freq, True) for n in range(nper+1)]
+        
+        t = pvals[0]
+        return 2.0 * (1.0/t - pvals[-1]) / (sum(pvals[1:])-(1.0-frac)/t)
  
-    def swappar(self, tenor):
+    def tenorpar(self, tenor):
         '''
         Returns par rate for given tenor -- e.g., termstr.tenorpar('10Y') 
         '''

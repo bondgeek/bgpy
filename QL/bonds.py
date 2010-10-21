@@ -135,6 +135,8 @@ class SimpleBond(object):
         self.spreadType = {"S": self.swapPremium,
                            "O": self.oasValue}
 
+    def __str__(self):
+        return "% ".join((str(self.coupon*100.0), str(self.maturity)))
     
     def setSettlement(self, settledate=None):
         '''change settlement'''
@@ -328,22 +330,12 @@ class SimpleBond(object):
                 raise
                 
         return yld
-    
-    def __str__(self):
-        return "% ".join((str(self.coupon*100.0), str(self.maturity)))
-
-    def __repr__(self):
-        return self.__str__()
-    
+        
     def fairSwapRate(self, termstructure):
         '''
         calculate the fair swap rate matching structure of non-call portion of bond
         '''
-        return USDLiborSwap(termstructure, 
-                            self.settle_, 
-                            self.maturity, self.coupon, 
-                            PayFlag=1, spread=0.0,
-                            setPriceEngine=True).swap.fairRate()
+        return termstructure.bondpar(self.maturity)
 
     def assetSwap(self, termstructure, spread_=0.0, ratio=1.0):
         '''
@@ -464,9 +456,8 @@ class SimpleBond(object):
             return 10.0
             
         x_ = 0.09
-        x1 = 0.10            
+        x1 = 0.10
         return Secant(x_, x1, valueFunc, objValue)
-
   
 class MuniBond(MuniBondType, SimpleBond):
     '''
