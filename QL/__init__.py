@@ -107,8 +107,8 @@ class Tenor(object):
         '''
         return int(self.term * freqValue(frequency))
     
-    def advance(self, date_, calendar=TARGET(), adjustType=Unadjusted):
-        return TARGET().advance(date_, self.length, self.timeunit, adjustType)
+    def advance(self, date_, adjustType=Unadjusted, calendar=TARGET(),):
+        return calendar.advance(date_, self.length, self.timeunit, adjustType)
         
     @property
     def term(self):

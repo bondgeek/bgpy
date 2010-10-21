@@ -4,8 +4,7 @@ from termstructurehelpers import HelperWarehouse, SwapRate
 
 from math import floor
 
-from termstructure import *
-
+from termstructure import TermStructureModel
 
 class basishelper(object):
     calendar = ql.TARGET()
@@ -17,19 +16,20 @@ class basishelper(object):
     liborLegDayCount = ql.Actual360()
     
     def __init__(self, tenor, parratio, divisor=1.000):
-        self.tenor = tenor  # maturity as tenorstring
+        self.tenor = ql.Tenor(tenor)  
         self.parratio = parratio / divisor
-    
-        self.length, self.units = ql.Tenor(self.tenor)
-        
+
         #term in number of pay periods
-        self.term = ql.Tenor(self.tenor).numberOfPeriods(self.basisFrequency)
-        self.nterm = int(self.term)
+        self.term = self.tenor.term
+        self.nterm = self.tenor.numberOfPeriods(self.basisFrequency)
         self.tail = self.term - self.nterm
         if self.nterm >= 1:
             assert self.tail < 1e-7, "helper tenor must be integer number of periods"
         else:
             self.ratio = self.parratio 
+    
+    def maturity(self, settlement):
+        return self.tenor.advance(settlement)
         
 class munibasistermstructure(TermStructureModel):
     '''
@@ -41,8 +41,8 @@ class munibasistermstructure(TermStructureModel):
     daycount = ql.ActualActualISDA
     
     def __init__(self, disc_termstr, curvedata, 
-                     settledays=2, calendar=TARGET(), frequency=Quarterly, 
-                     interp = LogLinear(), datadivisor=100.0, label=None):
+                     settledays=2, calendar=ql.TARGET(), frequency=ql.Quarterly, 
+                     interp = ql.LogLinear(), datadivisor=100.0, label=None):
         
         TermStructureModel.__init__(self, datadivisor, settledays, label)
         
@@ -58,17 +58,17 @@ class munibasistermstructure(TermStructureModel):
 
         muniswap_helpers = [basishelper(tnr, ratio/100.0) for tnr, ratio in cdata]
 
-        bootstrap = RatioBootstrap(muniswap_helpers, disc_termstr, 
+        bootstrap = RatioBootstrap(muniswap_helpers, self.disc_termstr, 
                                    self.settlement, self.calendar)
         
         datevector = bootstrap.keys()
         datevector.sort(key=lambda x: x.serialNumber())
         
-        discountvector = DoubleVector([float(bootstrap[d]) for d in datevector])        
-        datevector = DateVector(datevector)
+        discountvector = ql.DoubleVector([float(bootstrap[d]) for d in datevector])        
+        datevector = ql.DateVector(datevector)
         
-        self.curve = DiscountCurve(datevector, discountvector,
-                              self.daycount, self.calendar, self.interp)
+        self.curve = ql.DiscountCurve(datevector, discountvector,
+                                      self.daycount, self.calendar, self.interp)
                               
         self.curve.enableExtrapolation()   
         
@@ -111,11 +111,10 @@ def RatioBootstrap(instruments, disc_termstr, settlement, calendar=ql.TARGET()):
 
     instruments.sort(key=lambda x: x.term)
     longestIns = instruments[-1]
-    maturity = calendar.adjust(calendar.advance(settlement, 
-                                                longestIns.length, 
-                                                longestIns.units))
+    maturity = calendar.adjust(longestIns.tenor.advance(settlement))
+    
     # TODO: don't use Schedule unless you have to  
-    sched = Schedule(settlement, maturity, 
+    sched = ql.Schedule(settlement, maturity, 
                     longestIns.basisTenor, 
                     calendar, 
                     ql.ModifiedFollowing, ql.ModifiedFollowing, 
@@ -132,36 +131,30 @@ def RatioBootstrap(instruments, disc_termstr, settlement, calendar=ql.TARGET()):
     for instrN in instruments:
         
         if instrN.nterm < 1:
-            maturity = calendar.advance(settlement, 
-                                             instrN.length, instrN.units)
+            maturity = instrN.maturity(settlement)
+            
             lbr_df = disc_termstr.discount(maturity)
             lbr_fwd = disc_termstr.forwardPayment(settlement, 
-                                                  maturity)
+                                                  maturity) * instrN.parratio
             munidays = instrN.muniLegDayCount.yearFraction(settlement, 
                                                            maturity)                                           
             muni_Pvalue = 1./(1.+lbr_df * lbr_fwd * munidays)
             pvalue_dict[maturity] = muni_Pvalue
-            continue
         else:
-            thissched = [sched.date(n+1) for n in range(prev_n, instrN.nterm)]
-
             increment_values = []
-            increment_discounts = 0.0
-            alpha_factor = 0.0
-            for maturity in thissched:
+            increment_discounts = alpha_factor = 0.0
+            
+            for maturity in [sched.date(n+1) for n in range(prev_n, instrN.nterm)]:
                 time_increment = instrN.muniLegDayCount.yearFraction(prevInsMty, 
-                                                                maturity)
+                                                                     maturity)
                 lbr_df = disc_termstr.discount(maturity)
                 lbr_fwd = disc_termstr.forwardPayment(prev_mty, 
                                                       maturity) 
-                increment_values.append((time_increment,
-                                         lbr_df,
-                                         lbr_fwd, maturity))
+                increment_values.append((time_increment, lbr_df, lbr_fwd, maturity))
                                          
                 increment_discounts += lbr_df * lbr_fwd                        
                 prev_disc_lbr += lbr_df * lbr_fwd
                 alpha_factor += float(time_increment)*lbr_df*lbr_fwd
-                
                 prev_mty = maturity
 
             alpha = (instrN.parratio * prev_disc_lbr
@@ -181,5 +174,5 @@ def RatioBootstrap(instruments, disc_termstr, settlement, calendar=ql.TARGET()):
                 
         prev_ratio = ratio
         prevInsMty = maturity
-    
+
     return pvalue_dict
