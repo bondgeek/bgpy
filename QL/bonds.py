@@ -375,7 +375,8 @@ class SimpleBond(object):
         
         prm = self.baseswap.value(self.oasCurve)
         if self.swaption:
-            prm += self.swaption.value(vol, self.oasCurve, model=model)
+            self.callvalue = self.swaption.value(vol, self.oasCurve, model=model)
+            prm += self.callvalue
         
         return 100.-prm 
 
@@ -390,8 +391,9 @@ class SimpleBond(object):
         
         prm = self.baseswap.value()
         if self.swaption:
-            prm += self.swaption.value(vol, model=model)
-        
+            self.callvalue = self.swaption.value(vol, model=model)
+            prm += self.callvalue
+
         return prm 
                 
     def assetSwapSpread(self, termstructure, price, vol=1e-7, 
@@ -401,8 +403,14 @@ class SimpleBond(object):
                               spreadType = "S",
                               model=ql.BlackKarasinski):
         '''
-        Calculate asset swap spread given price.
-        Objective function is well-behaved, so secant search is sufficient
+        Calculate asset swap spread or ratio given price.
+        
+        spreadType: 
+            "S" for asset swap
+            "O" for oas 
+        
+        Objective function is well-behaved, so secant search is sufficient.
+        
         '''
         spreadFunc = self.spreadType.get(spreadType, self.swapPremium)
  

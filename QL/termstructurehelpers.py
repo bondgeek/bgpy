@@ -171,15 +171,17 @@ class SimpleHelper(dict):
             self.helpers.update(**kwargs) #TODO: add check to see if valid helper
         dict.__init__(self, self.helpers)
         
-    def __call__(self, tenor, level, today=None):
+    def __call__(self, tenor, level, today=None, use=None):
 
-        if type(tenor) is str:
+        if use:
+            ratehelper = use(tenor)  
+        elif type(tenor) is str:
             tnr = ql.Tenor(tenor)
         
             #TODO:  this logic needs to be more generic
             helpertype = 's' if tnr.unit == 'Y' else 'd'
             ratehelper = self.helpers[helpertype](tenor)
-            
+  
         else:
             helpertype = 'b'
             ratehelper = self.helpers[helpertype](tenor, today)
@@ -191,7 +193,7 @@ class HelperWarehouse(object):
     Create a container for QuantLib TermStructure RateHelpers.
     '''
 
-    def __init__(self, swaptenors, levels_=None, datadivisor=1.0):
+    def __init__(self, swaptenors, levels_=None, datadivisor=1.0, helper=None):
         self.ratehelpers = {}
         self.ratehelpervector = ql.RateHelperVector()
         if not levels_:
@@ -199,13 +201,14 @@ class HelperWarehouse(object):
         else:
             assert len(swaptenors) == len(levels_), "levels and tenor list should be same length"
         
+        self.specialhelper = helper
         self.datadivisor = datadivisor
         
         swaplevels = zip(swaptenors, levels_)
         getratehelper = SimpleHelper(self.datadivisor)
         
         for tenor, level in swaplevels:
-            quote, helper = getratehelper(tenor, level)            
+            quote, helper = getratehelper(tenor, level, use=self.specialhelper)            
             self.ratehelpers[tenor] = {'quote': quote, 
                                        'helper': helper}
         
@@ -236,3 +239,7 @@ class HelperWarehouse(object):
 
         return self.ratehelpervector
     
+    @property
+    def list(self):
+        return [self.ratehelpers[tenor]['helper'] for tenor in self.tenorlist]
+        

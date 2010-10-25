@@ -6,8 +6,6 @@ Created on May 26, 2010
 '''
 import bgpy.QL as ql
 from termstructurehelpers import HelperWarehouse, SwapRate
-
-from math import floor
         
 class TermStructureModel(object):
     '''
@@ -96,7 +94,7 @@ class TermStructureModel(object):
         freq = float(ql.freqValue(frequency))
         term = freq * dayCount.yearFraction(settle, matDate)
         
-        nper = floor(term)
+        nper = int(term)
         frac = term - nper
         
         # second argument to discount allows extrapolation
@@ -130,6 +128,12 @@ class TermStructureModel(object):
                     for d0, d1 in fltDates]
         
         return 2.0 * sum(fltPvals) / sum(fixedPvals[1:])
+    
+    def pfile(self, num=360, timeunit=ql.Months):
+        discount = self.curve.discount
+        advance = lambda x: ql.TARGET().advance(self.curve.referenceDate(), 
+                                                x, timeunit)
+        return dict([(n, discount(advance(n))) for n in range(num+1)])
     
     def update(*args):
         pass
@@ -192,9 +196,13 @@ class SimpleCurve(TermStructureModel):
         return self
 
     def reset(self):
+        '''
+        Returns True if existing curve is reset, otherwise False
+        '''
         if self.ratehelpers:
             self.ratehelpers = None
             self.curve = None
+            self.upToDate = False
             return True
         return False
           
@@ -225,13 +233,12 @@ class SimpleCurve(TermStructureModel):
         else:
             return "SimpleCurve"
     
-class DiscountCurve(TermStructureModel):
+class ZCurve(TermStructureModel):
     '''
     Fits a set of pure discount factors to a term structure.
     '''
     def __init__(self, curvedata=None, settledays = 2,
                  interp = ql.LogLinear(), datadivisor=1.0, label=None):
-    
         TermStructureModel.__init__(self, datadivisor, settledays, label)
         self.interp = interp
         
@@ -239,23 +246,34 @@ class DiscountCurve(TermStructureModel):
             self.update(curvedata, datadivisor)
 
     def update(self, curvedata, datadivisor=1.0):
-    
         curvedata = self.cleancurvedata(curvedata)
 
         datevector = curvedata.keys()
-        self.settlement = datevector[0]
-        self.curvedate = ql.TARGET().advance(self.settlement, -1*self.settledays, 
-                                             ql.Days)
         datevector.sort(key=lambda x: x.serialNumber())
         
-        discountvector = DoubleVector([float(curvedata[d]) for d in datevector])        
-        datevector = DateVector(datevector)
+        self.settlement = datevector[0]
+        self.curvedate = ql.TARGET().advance(self.settlement, -1*self.settledays, ql.Days)
+        ql.Settings.instance().setEvaluationDate(self.curvedate)
+                                 
+        discountvector = ql.DoubleVector([float(curvedata[d]) for d in datevector])        
 
-        curve = DiscountCurve(datevector, discountvector,
-                              self.daycount, self.calendar, 
-                              self.interp)
-        curve.enableExtrapolation()   
+        curve = ql.DiscountCurve(ql.DateVector(datevector), discountvector,
+                                 self.daycount, self.calendar, self.interp)
+        curve.enableExtrapolation()
+        
         self.curve.linkTo(curve)
+    
+    def from_pfile(self, settle, curvedata, timeunit=ql.Months, datadivisor=1.0):
+        advance = lambda x: self.calendar.advance(settle, x, timeunit)
+        pfile_ = dict( [(advance(k), curvedata[k]) for k in curvedata] )
+        
+        self.update(pfile_, datadivisor)
+        
+    def __str__(self):
+        if self.label:
+            return self.label
+        else:
+            return "SimpleCurve"
 
 class SpreadedCurve(TermStructureModel):
     '''

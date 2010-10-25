@@ -27,17 +27,7 @@ def freqValue(freq_):
     '''
     return getattr(freq_, "value__", freq_)
 
-if CONFIG_NAME == 'PY':
-    # Matching c-sharp QuantLib bindings
-    # because you can't go the other way (c++ to c#)
-    RateHelperVector.Clear = RateHelperVector.clear
-    RateHelperVector.Add = RateHelperVector.append
-    
-#
-# Aliases 
-#
-# Calendars & DayCounters
-
+# Create aliases to allow consistent use of c++ & c# bindings
 if CONFIG_NAME == 'IPY':
     USGovernmentBond = UnitedStates(UnitedStates.Market.GovernmentBond)
     USGovernmentNYSE = UnitedStates(UnitedStates.Market.NYSE)
@@ -57,6 +47,16 @@ if CONFIG_NAME == 'IPY':
 
     
 else:
+    # Matching c-sharp QuantLib bindings on Vectors / Schedule
+    # because you can't go the other way (c++ to c#)
+    for x in dir(QuantLib): 
+        if x.find("Vector") >=0 and x.find("swigregister") < 0:
+            vars()[x].Clear = getattr(vars()[x], 'clear', lambda x: None)
+            vars()[x].Add = getattr(vars()[x], 'append', lambda x: None)
+#    RateHelperVector.Clear = RateHelperVector.clear
+#    RateHelperVector.Add = RateHelperVector.append
+    Schedule.date = lambda self, n: self.__getitem__(n)
+        
     USGovernmentBond = UnitedStates(UnitedStates.GovernmentBond)
     USNYSE = UnitedStates(UnitedStates.NYSE)
     USSettlement = UnitedStates(UnitedStates.Settlement)
@@ -66,6 +66,7 @@ else:
     Thirty360Bond = Thirty360(Thirty360.BondBasis)
     Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
     _createAliases(_aliasReferences(DateGeneration, vars()))
+
 
 class Tenor(object):
     _tenorUnits = {'D': Days,
@@ -101,15 +102,47 @@ class Tenor(object):
         self.unit = unit
         self.timeunit = self._tenorUnits.get(self.unit, Days)
     
+    def __str__(self):
+        return str(self.length)+self.unit
+    
+    def __repr__(self):
+        return "<Tenor:"+self.__str__()+">"
+             
     def numberOfPeriods(self, frequency=Semiannual):
         '''
         Returns the number of integer periods in the tenor based on the given frequency.
         '''
         return int(self.term * freqValue(frequency))
     
-    def advance(self, date_, adjustType=Unadjusted, calendar=TARGET(),):
-        return calendar.advance(date_, self.length, self.timeunit, adjustType)
+    def advance(self, date_, convention=Unadjusted, calendar=TARGET(), Reverse=False):
+        length_ = self.length if not Reverse else -self.length
+        return calendar.advance(date_, length_, self.timeunit, convention)
+    
+    def schedule(self, settle_, maturity_, convention=Unadjusted, calendar=TARGET()):
+        '''
+        tenor('3m').schedule(settleDate, maturityDate) or
+        tenor('3m').schedule(settleDate, '10Y')
         
+        gives a schedule of dates from settleDate to maturity with a short front stub.
+        '''
+        sched = []
+        if type(maturity_) == str:
+            maturity_ = Tenor(maturity_).advance(settle_, 
+                                                 convention=convention,
+                                                 calendar=calendar)
+            
+        dt = maturity_
+        
+        while dt > settle_:
+            sched.append(calendar.adjust(dt, convention))
+            dt = self.advance(dt, Reverse=True)
+        else:
+            sched.append(settle_)
+            
+        sched.sort(key=lambda dt: dt.serialNumber)
+        
+        return sched
+                    
     @property
     def term(self):
         '''
