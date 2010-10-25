@@ -21,17 +21,20 @@ def Secant(x0, x1, valueFunc, objectiveValue):
         v_ = valueFunc(x0)
         
         ictr = 0
+        delta = 1.0
+        v_diff = 0.0
         ok_go = True
         while ok_go:
+            x1 = x1 - v_diff / delta
             v1 = valueFunc(x1)
             v_diff = v1 - objectiveValue
             delta = (v1 - v_) / (x1 - x0)
             x0 = x1
-            x1 = x1 - v_diff / delta
             v_ = v1
             ictr += 1
             # check at end to ensure at least one pass
-            ok_go = abs(v_diff) > MINVAL and abs(x1-x0) > MINVAL and ictr < MAXITER
+            ok_go = (abs(v_diff) > MINVAL and abs(delta) > MINVAL and 
+                    abs(x1-x0) > MINVAL and ictr < MAXITER)
 
         assert (ictr < MAXITER+1), "Secant: Max iterations reached: %s" % x1*100.0
         return x1

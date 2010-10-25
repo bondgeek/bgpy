@@ -132,7 +132,7 @@ class SimpleBond(object):
         self.swaption = None
         self.assetSwapCoupon = self.coupon    
         self.assetSwapRatio = 1.0
-        self.spreadType = {"S": self.swapPremium,
+        self.spreadType = {"S": self.aswValue,
                            "O": self.oasValue}
 
     def __str__(self):
@@ -372,7 +372,6 @@ class SimpleBond(object):
             self.assetSwap(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread
-        
         prm = self.baseswap.value(self.oasCurve)
         if self.swaption:
             self.callvalue = self.swaption.value(vol, self.oasCurve, model=model)
@@ -380,7 +379,7 @@ class SimpleBond(object):
         
         return 100.-prm 
 
-    def swapPremium(self, termstructure, spread_, ratio_ = 1.0,
+    def aswValue(self, termstructure, spread_, ratio_ = 1.0,
                          vol=1e-7, model=ql.BlackKarasinski):
         '''
         Calculate asset swap premium, given spread and termstructure.
@@ -394,14 +393,14 @@ class SimpleBond(object):
             self.callvalue = self.swaption.value(vol, model=model)
             prm += self.callvalue
 
-        return prm 
+        return 100.-prm 
                 
-    def assetSwapSpread(self, termstructure, price, vol=1e-7, 
-                              baseSpread = 0.0,
-                              solveRatio = False,
-                              baseRatio = 1.0,
-                              spreadType = "S",
-                              model=ql.BlackKarasinski):
+    def solveSpread(self, termstructure, price, vol=1e-7, 
+                          baseSpread = 0.0,
+                          baseRatio = 1.0,
+                          solveRatio = False,
+                          spreadType = "S",
+                          model=ql.BlackKarasinski):
         '''
         Calculate asset swap spread or ratio given price.
         
@@ -412,27 +411,29 @@ class SimpleBond(object):
         Objective function is well-behaved, so secant search is sufficient.
         
         '''
-        spreadFunc = self.spreadType.get(spreadType, self.swapPremium)
- 
-        bondyield = self.toYield(price)
+        spreadFunc = self.spreadType.get(spreadType, self.aswValue)
+        bondYTM = self.toYTM(price)
          
         # set objective value, value function and initial values
-        objValue = -(price - 100.0) 
+        objValue = price
+        
         if not solveRatio:
             valueFunc = lambda x_: spreadFunc(termstructure, baseSpread+x_, 
                                               baseRatio, vol, model=model)
             x_ = 0.0
-            x1 = bondyield - self.fairSwapRate(termstructure)
+            x1 = bondYTM - self.fairSwapRate(termstructure)
                 
         else:
             valueFunc = lambda x_: spreadFunc(termstructure, baseSpread, x_, vol,
                                               model=model)
             x_ = 1.0
-            x1 = bondyield / self.fairSwapRate(termstructure)
-            
-        return Secant(x_, x1, valueFunc, objValue)
+            x1 = bondYTM / self.fairSwapRate(termstructure)
+        
+        spread_ = Secant(x_, x1, valueFunc, objValue)
+        
+        return spread_
 
-    def assetSwapImpVol(self, termstructure, price,
+    def solveImpliedVol(self, termstructure, price,
                               spread = 0.0,
                               ratio = 1.0,
                               spreadType = "S",
@@ -442,7 +443,7 @@ class SimpleBond(object):
         
         Enforces bound of 0.0% to 1000% on vol
         '''
-        spreadFunc = self.spreadType.get(spreadType, self.swapPremium)
+        spreadFunc = self.spreadType.get(spreadType, self.aswValue)
         
         if not self.calllist:
             # bond is not callable
@@ -466,7 +467,36 @@ class SimpleBond(object):
         x_ = 0.09
         x1 = 0.10
         return Secant(x_, x1, valueFunc, objValue)
-  
+
+    def value(self, termstructure,
+                    spread = 0.0,
+                    ratio = 1.0,
+                    vol = 1e-12,
+                    spreadType="S",
+                    model = ql.BlackKarasinski):
+        valueFunc = self.spreadType.get(spreadType, self.aswValue)
+        
+        print(" in value: %s %s " % (spreadType, valueFunc))
+        value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
+        print("val: %s " % value_)
+        self.value_ = self.calc(price=value_, dict_out=True)
+        
+        self.value_['callvalue'] = getattr(self, "callvalue", 0.0)
+        self.value_['oasPrice'] = value_ + self.value_['callvalue']
+        self.value_['oasYield'] = self.toYTM(self.value_['oasPrice'])
+        self.value_['spreadType'] = spreadType
+        self.value_['spread'] = spread
+        self.value_['ratio'] = ratio
+        self.value_['vol'] = vol
+        self.value_['model'] = model
+        
+        return value_
+        
+    @property
+    def values(self):
+        return getattr(self, "value_", {})
+        
+        
 class MuniBond(MuniBondType, SimpleBond):
     '''
     Muni Bond Object, inherits from SimpleBond

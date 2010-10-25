@@ -67,7 +67,6 @@ else:
     Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
     _createAliases(_aliasReferences(DateGeneration, vars()))
 
-
 class Tenor(object):
     _tenorUnits = {'D': Days,
                    'W': Weeks, 
@@ -132,7 +131,6 @@ class Tenor(object):
                                                  calendar=calendar)
             
         dt = maturity_
-        
         while dt > settle_:
             sched.append(calendar.adjust(dt, convention))
             dt = self.advance(dt, Reverse=True)
