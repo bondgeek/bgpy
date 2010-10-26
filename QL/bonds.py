@@ -429,9 +429,7 @@ class SimpleBond(object):
             x_ = 1.0
             x1 = bondYTM / self.fairSwapRate(termstructure)
         
-        spread_ = Secant(x_, x1, valueFunc, objValue)
-        
-        return spread_
+        return Secant(x_, x1, valueFunc, objValue)
 
     def solveImpliedVol(self, termstructure, price,
                               spread = 0.0,
@@ -474,11 +472,13 @@ class SimpleBond(object):
                     vol = 1e-12,
                     spreadType="S",
                     model = ql.BlackKarasinski):
+        '''
+        Calculates termstructure / asset swap values -- sets "values" property.
+        '''
         valueFunc = self.spreadType.get(spreadType, self.aswValue)
         
-        print(" in value: %s %s " % (spreadType, valueFunc))
         value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
-        print("val: %s " % value_)
+        
         self.value_ = self.calc(price=value_, dict_out=True)
         
         self.value_['callvalue'] = getattr(self, "callvalue", 0.0)
@@ -562,10 +562,4 @@ class MuniBond(MuniBondType, SimpleBond):
             
         return aty
     
-    def assetSwapHedgeRatio(self, basisTermstructure):
-        baseTenor = basisTermstructure.tenorParRatio("10Y")
-        basisSwap = BasisSwap(basisTermstructure.disc_termstr, basisTermstructure,
-                              self.settle_, self.maturity, 
-                              baseTenor)
-        return basisSwap.fairRatio()
     
