@@ -24,14 +24,13 @@ import re
 
 try:
     import os
-
+    
     def gohome():
         os.chdir(os.environ.get("HOME"))
         return os.getcwd()
 
     def whereami():
         print("%s" % os.getcwd())
-
 except:
     print("module os not available")
 

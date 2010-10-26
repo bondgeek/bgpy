@@ -1,6 +1,6 @@
-import rslQL as ql
+import bgpy.QL as ql
 
-import rslBG.termstructure as ts
+import bgpy.QL.termstructure as ts
 from MarketData.Bloomberg import BLPSync
 
 BLPS = lambda x, f_: BLPSync(x, f_, timeout=5000)
@@ -47,7 +47,7 @@ def bbg_icvs(tenor_list, settle, ticker="S0023D", key="BLC2 Curncy"):
         discountlist.append(discount)
         
     curvedata = dict(zip(datelist, discountlist))
-    return ts.discounttermstructure(curvedata)
+    return ts.ZCurve(curvedata)
 
 class bbgVolSurface(object):
     '''

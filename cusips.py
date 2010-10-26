@@ -7,7 +7,6 @@ Utilities for handling cusip check digits
 
 __all__ = ['cusipcheckdigit', 'ischeckdigit', 'validate_cusip', 'qregex']
             
-
 import string
 import re
 
