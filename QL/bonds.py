@@ -9,6 +9,7 @@ Created on Jan 24, 2010
 import bgpy.QL as ql
 from bgpy.math.solvers import Secant, SolverExceptions
 from bgpy.QL import bgDate
+from bgpy.dpatterns import Struct
 
 import bgpy.QL.termstructure as ts
 from bgpy.QL.irswaps import USDLiborSwap, USDLiborSwaption, BasisSwap
@@ -26,6 +27,21 @@ class BondExceptions(Exception):
     MIN_YLD = 1e-7
     NEG_YIELD_MSG = "Negative yield in ytmToPrice" 
 
+class BondValues(Struct):
+    alist = ['bondyield', 'price',
+              'oasYield', 'callvalue', 'oasPrice', 
+              'spread', 'ratio', 'vol', 'spreadType', 'model']
+              
+    def __init__(self, valueDict):
+        val_ = {}
+        for k in self.alist:
+            val_[k] = valueDict.get(k, None)
+        dict.__init__(self, val_)
+    
+    def __repr__(self):
+        return "<%s, %s>" % (self.get("price", None), 
+                             self.get("bondyield", None))
+        
 class BondType(object):
     '''
     Do not use except as base class
@@ -479,22 +495,18 @@ class SimpleBond(object):
         
         value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
         
-        self.value_ = self.calc(price=value_, dict_out=True)
+        dvalues = self.calc(price=value_, dict_out=True)
         
-        self.value_['callvalue'] = getattr(self, "callvalue", 0.0)
-        self.value_['oasPrice'] = value_ + self.value_['callvalue']
-        self.value_['oasYield'] = self.toYTM(self.value_['oasPrice'])
-        self.value_['spreadType'] = spreadType
-        self.value_['spread'] = spread
-        self.value_['ratio'] = ratio
-        self.value_['vol'] = vol
-        self.value_['model'] = model
+        dvalues['callvalue'] = getattr(self, "callvalue", 0.0)
+        dvalues['oasPrice'] = value_ + dvalues['callvalue']
+        dvalues['oasYield'] = self.toYTM(dvalues['oasPrice'])
+        dvalues['spreadType'] = spreadType
+        dvalues['spread'] = spread
+        dvalues['ratio'] = ratio
+        dvalues['vol'] = vol
+        dvalues['model'] = model
         
-        return value_
-        
-    @property
-    def values(self):
-        return getattr(self, "value_", {})
+        return BondValues(dvalues)
         
         
 class MuniBond(MuniBondType, SimpleBond):

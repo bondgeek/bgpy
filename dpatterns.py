@@ -41,3 +41,14 @@ class Borg(object):
     _shared_state = {}
     def __init__(self):
         self.__dict__ = self._shared_state
+
+class Struct(dict):
+    '''
+    Creates a static data structure.  Updates of attributes 'bounce off'
+    after initial set.
+    '''
+    def __getattr__(self, k):
+        return self.get(k, None)
+    
+    def __setattr__(self, k, v):
+        return None
