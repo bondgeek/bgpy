@@ -39,8 +39,8 @@ class BondValues(Struct):
         dict.__init__(self, val_)
     
     def __repr__(self):
-        return "<%s, %s>" % (self.get("price", None), 
-                             self.get("bondyield", None))
+        return "<%3.3f, %2.3f>" % (self.get("price", 0.0), 
+                                   100.0*self.get("bondyield", 0.0))
         
 class BondType(object):
     '''
@@ -537,7 +537,6 @@ class SimpleBond(object):
             
             if vol is not None:
                 solveRatio = True if not ratio and spread is not None else False
-                print("solveRatio: %s" % solveRatio)
                 valueFunc = lambda p, v, s, r: self.solveSpread(termstructure,
                                                                 p, v, s, r,
                                                                 solveRatio,
@@ -557,7 +556,6 @@ class SimpleBond(object):
         ratio = ratio if ratio else 1.0
         vol = vol if vol else 1e-12
         
-        print("p %s v %s s %s r %s" % (bondprice, vol, spread, ratio))
         return valueFunc(bondprice, vol, spread, ratio)
                 
 class MuniBond(MuniBondType, SimpleBond):
