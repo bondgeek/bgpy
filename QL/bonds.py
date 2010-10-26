@@ -214,7 +214,7 @@ class SimpleBond(object):
         self.maxPrice = self.toPrice(0.000001)
         return self.maxPrice
     
-    def calc(self, bondyield=None, price=None, dict_out=False):
+    def calc(self, bondyield=None, bondprice=None, dict_out=False):
         '''
         Calculates price/yield based on which value is passed.
         If neither is passed, uses which SimpleBond attribute is set.
@@ -227,6 +227,7 @@ class SimpleBond(object):
         '''
         errstr = "calc(): price=%s bondyield=%s exactly one must have a value"  
         # Check bond's attributes if arguments not passed.
+        price = bondprice # needed to change argument for Resolver
         if not (bondyield or price):
             bondyield = getattr(self, "bondyield", None)
             price = getattr(self, "price", None)
@@ -445,7 +446,14 @@ class SimpleBond(object):
             x_ = 1.0
             x1 = bondYTM / self.fairSwapRate(termstructure)
         
-        return Secant(x_, x1, valueFunc, objValue)
+        value_ = Secant(x_, x1, valueFunc, objValue)
+        
+        if solveRatio:
+            ratio, spread = value_, baseSpread
+        else:
+            ratio, spread = baseRatio, baseSpread + value_
+            
+        return self.value(termstructure, spread, ratio, vol, spreadType, model)
 
     def solveImpliedVol(self, termstructure, price,
                               spread = 0.0,
@@ -480,7 +488,9 @@ class SimpleBond(object):
             
         x_ = 0.09
         x1 = 0.10
-        return Secant(x_, x1, valueFunc, objValue)
+        vol_ = Secant(x_, x1, valueFunc, objValue)
+        
+        return self.value(termstructure, spread, ratio, vol_, spreadType, model)
 
     def value(self, termstructure,
                     spread = 0.0,
@@ -495,7 +505,7 @@ class SimpleBond(object):
         
         value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
         
-        dvalues = self.calc(price=value_, dict_out=True)
+        dvalues = self.calc(bondprice=value_, dict_out=True)
         
         dvalues['callvalue'] = getattr(self, "callvalue", 0.0)
         dvalues['oasPrice'] = value_ + dvalues['callvalue']
@@ -507,8 +517,49 @@ class SimpleBond(object):
         dvalues['model'] = model
         
         return BondValues(dvalues)
+    
+    def oas1(self, termstructure, 
+                   bondprice=None, bondyield=None,
+                   spread=None, ratio=None,
+                   vol = 1e-12,
+                   spreadType="S",
+                   model = ql.BlackKarasinski):
+        '''
+        Requires two of three inputs:
+            1) price or yield
+            2) spread or ratio
+            3) vol
+        '''
+        if bondprice or bondyield:
+            py = self.calc(bondyield, bondprice, True)
+            bondprice = py['price']
+            bondyield = py['bondyield']
+            
+            if vol is not None:
+                solveRatio = True if not ratio and spread is not None else False
+                print("solveRatio: %s" % solveRatio)
+                valueFunc = lambda p, v, s, r: self.solveSpread(termstructure,
+                                                                p, v, s, r,
+                                                                solveRatio,
+                                                                spreadType,
+                                                                model)
+            else:
+                valueFunc = lambda p, v, s, r: self.solveImpliedVol(termstructure, 
+                                                                    p, s, r,
+                                                                    spreadType,
+                                                                    model)
+                
+        else:   
+            valueFunc = lambda p, v, s, r: self.value(termstructure, s, r, v,
+                                                   spreadType, model)
         
+        spread = spread if spread else 0.0
+        ratio = ratio if ratio else 1.0
+        vol = vol if vol else 1e-12
         
+        print("p %s v %s s %s r %s" % (bondprice, vol, spread, ratio))
+        return valueFunc(bondprice, vol, spread, ratio)
+                
 class MuniBond(MuniBondType, SimpleBond):
     '''
     Muni Bond Object, inherits from SimpleBond
@@ -543,7 +594,7 @@ class MuniBond(MuniBondType, SimpleBond):
         return self.qtaxyield
     
     # TODO: allow after-tax yield to be passed in to get price.
-    def calcAfterTax(self, price=None, bondyield=None,
+    def calcAfterTax(self, bondprice=None, bondyield=None,
                      settle=None, capgains=.15, ordinc=.35,
                      ptsyear=0.25):
         '''
@@ -553,6 +604,7 @@ class MuniBond(MuniBondType, SimpleBond):
         
         # Check bond's attributes if arguments not passed.
         errstr = "calcAfterTax(): price=%s bondyield=%s exactly one must have a value"
+        price = bondprice
         if not (bondyield or price):
             bondyield = getattr(self, "bondyield", None)
             price = getattr(self, "price", None)
@@ -569,7 +621,7 @@ class MuniBond(MuniBondType, SimpleBond):
             aty = self.toYTM(price, redemption=rval)
             self.qtaxflag = True
         else:
-            aty = self.calc(price=price)
+            aty = self.toYield(price)
             self.qtaxflag = False
             
         return aty
