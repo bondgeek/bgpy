@@ -38,8 +38,7 @@ class XLdb(object):
     
     Class creates member dictionary with data from the specified 
     spreadsheet.
-        - nulErrs returns 'None' if cell string starts with "#', ala Bloomberg 
-          data.
+        - hash_comments=True returns 'None' if cell string starts with "#', ala Bloomberg data.
         - idx_column determines which column to serve as the key 
           for the qdata dictionary.  '-1' uses the row number as key.
     '''

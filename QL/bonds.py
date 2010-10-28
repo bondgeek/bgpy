@@ -114,7 +114,7 @@ class SimpleBond(object):
     Bond Object: 
     coupon, maturity, issuedate, oid, callfeature, bondtype, redvalue
     """
-    def __init__(self,coupon, maturity, 
+    def __init__(self, coupon, maturity, 
                  callfeature=None, oid=None, issuedate=None, 
                  bondtype=None, redvalue=100.,
                  settledate=None):
@@ -225,7 +225,7 @@ class SimpleBond(object):
                                                    'pricedTo': toDate
                                                    'toPrice': toPrice}
         '''
-        errstr = "calc(): price=%s bondyield=%s exactly one must have a value"  
+        errstr = "calc(): bondyield=%s bondprice=%s exactly one must have a value"  
         # Check bond's attributes if arguments not passed.
         price = bondprice # needed to change argument for Resolver
         if not (bondyield or price):
@@ -319,7 +319,7 @@ class SimpleBond(object):
         return price
     
     def toYield(self, _price):
-        return self.calc(price = _price)
+        return self.calc(bondprice = _price)
         
     def toPrice(self, _yield):
         return self.calc(_yield)
