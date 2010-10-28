@@ -360,11 +360,11 @@ class SimpleBond(object):
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
         '''     
-
+        assetSwapSettle = min(self.settle_, termstructure.referenceDate())
         self.assetSwapCoupon = self.coupon / ratio   
         self.assetSwapRatio = ratio
         self.baseswap = USDLiborSwap(termstructure, 
-                            self.settle_, 
+                            assetSwapSettle, 
                             self.maturity, self.assetSwapCoupon, 
                             PayFlag=1, spread=spread_,
                             notionalAmount = 100.0)
@@ -377,6 +377,8 @@ class SimpleBond(object):
                                     self.maturity, self.assetSwapCoupon, 
                                     PayFlag=0, spread=spread_,
                                     notionalAmount = 100.0)
+        
+        return (self.baseswap, self.swaption)
         
     def oasValue(self, termstructure, spread, ratio=1.0, vol=1e-7, 
                        model=ql.BlackKarasinski):
@@ -405,9 +407,9 @@ class SimpleBond(object):
         '''
         self.assetSwap(termstructure, spread_, ratio_)
         
-        prm = self.baseswap.value()
+        prm = self.baseswap.value(termstructure)
         if self.swaption:
-            self.callvalue = self.swaption.value(vol, model=model)
+            self.callvalue = self.swaption.value(vol, termstructure, model=model)
             prm += self.callvalue
 
         return 100.-prm 

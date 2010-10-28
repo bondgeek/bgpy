@@ -12,8 +12,7 @@ try:
     CONFIG_NAME = 'IPY'
 except:
     CONFIG_NAME = 'PY'
-    
-    
+        
 from QuantLib import *
 
 from bgpy import aliasReferences as _aliasReferences
@@ -131,13 +130,13 @@ class Tenor(object):
                                                  calendar=calendar)
             
         dt = maturity_
-        while dt > settle_:
+        while dt.serialNumber() > settle_.serialNumber():
             sched.append(calendar.adjust(dt, convention))
             dt = self.advance(dt, Reverse=True)
         else:
             sched.append(settle_)
             
-        sched.sort(key=lambda dt: dt.serialNumber)
+        sched.sort(key=lambda dt: dt.serialNumber())
         
         return sched
                     

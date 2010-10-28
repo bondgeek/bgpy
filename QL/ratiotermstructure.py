@@ -178,7 +178,7 @@ class RatioCurve(TermStructureModel):
         instruments.sort(key=lambda x: x.term)
         
         sched = instruments[-1].schedule(self.settlement)
-        
+
         # will contain all discount factors 
         pvalue_dict = {self.settlement: 1.0} 
         
@@ -227,7 +227,7 @@ class RatioCurve(TermStructureModel):
                 prev_mty = prevInsMty
                 prev_muniPvalue = pvalue_dict.get(prev_mty, prev_muniPvalue)
                 
-                for maturity in [sched[n+1] for n in range(prev_n, instrN.nterm)]:
+                for maturity in [sched[n] for n in range(prev_n, instrN.nterm)]:
                     time_increment = instrN.muniLegDayCount.yearFraction(prevInsMty, 
                                                                          maturity)
                     lbr_df = self.disc_termstr.discount(maturity)

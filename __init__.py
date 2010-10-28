@@ -31,6 +31,7 @@ version = (0,0,1)
 version_string = "bgpy:  BG Tools version %d.%d.%d " % version
 
 HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', '.'))
+DATADIR = os.environ.get('BGPY_DATADIR', HOMEPATH)
 PathJoin = os.path.join
 
 def aliasReferences(namespc, oldspace=None, ignorePrivate=True):
