@@ -5,6 +5,8 @@ Created on Apr 17, 2010
 '''
 import os
 import xlrd
+import xlwt
+
 from datetime import date
 
 def xl_to_date(xdate, _datemode = 1):
@@ -109,3 +111,29 @@ class XLdb(object):
             
     def xlCellValue(self, x):
         return xlValue(x, self.datemode, self.hash_comments)
+
+class XLOut(object):
+    datestyle = xlwt.XFStyle()
+    datestyle.num_format_str='MM/DD/YYYY'
+    defaultstyle = xlwt.XFStyle()
+    styles = {"date": datestyle}
+    
+    def __init__(self, fname, sheets=1):
+        self.filename = fname
+        
+        self.wkb = xlwt.Workbook()                
+
+        self.sheet = {}
+        for n in range(sheets):
+            sheetname = "Sheet"+str(n+1)
+            self.sheet[n] = self.wkb.add_sheet(sheetname)
+    
+    def write(self, value_, row_, col_, sheet=1, format=None):
+        style = self.styles.get(format, self.defaultstyle)
+        
+        ws = self.sheet[sheet-1]
+        ws.write(row_, col_, value_, style)
+        
+    def close(self):
+        self.wkb.save(self.filename)
+        

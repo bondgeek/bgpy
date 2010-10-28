@@ -68,7 +68,7 @@ class SwapRate(BGRateHelper):
     
     def __init__(self, tenor):
         BGRateHelper.__init__(self, tenor)
-        
+            
     @classmethod
     def setLibor(cls, settlementDate, fixingRate=None):
         '''
@@ -87,14 +87,20 @@ class SwapRate(BGRateHelper):
             try:
                 cls.libor.addFixing(fixingDate, fixingRate)
             except:
-                fixingRate = cls.libor.fixing(fixingDate)
+                try:
+                    fixingRate = cls.libor.fixing(fixingDate)
+                except:
+                    # to hell with it...this won't be necessary in QuantLib1.0
+                    pass
+                
         return (fixingDate, fixingRate)
     
     def _helper(self):        
         return (self.quote, 
                 ql.SwapRateHelper(ql.QuoteHandle(self.quote),
                                   self.tenor, self.calendar,
-                                  self.fixedLegFrequency, self.fixedLegAdjustment,
+                                  self.fixedLegFrequency,
+                                  self.fixedLegAdjustment,
                                   self.fixedLegDayCounter, self.libor))             
 
 class BondHelper(object):
