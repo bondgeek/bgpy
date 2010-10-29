@@ -381,13 +381,12 @@ class SimpleBond(object):
         return (self.baseswap, self.swaption)
         
     def oasValue(self, termstructure, spread, ratio=1.0, vol=1e-7, 
-                       model=ql.BlackKarasinski):
+                       model=ql.BlackKarasinski, solver=False):
         '''
         OAS given spread
         '''
-        self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
-        
-        if not self.baseswap or (abs(ratio - self.assetSwapRatio) > 1e-8):
+        if (not solver) or not (self.oasCurve and self.baseswap):
+            self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
             self.assetSwap(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread
@@ -396,10 +395,15 @@ class SimpleBond(object):
             self.callvalue = self.swaption.value(vol, self.oasCurve, model=model)
             prm += self.callvalue
         
+        if not solver:
+            self.baseswap = None
+            self.swaption = None
+            self.oasCurve = None
+        
         return 100.-prm 
 
     def aswValue(self, termstructure, spread_, ratio_ = 1.0,
-                         vol=1e-7, model=ql.BlackKarasinski):
+                         vol=1e-7, model=ql.BlackKarasinski, solver=False):
         '''
         Calculate asset swap premium, given spread and termstructure.
         Assumes termstructure object is derivative of TermStructureModel class,
@@ -412,6 +416,11 @@ class SimpleBond(object):
             self.callvalue = self.swaption.value(vol, termstructure, model=model)
             prm += self.callvalue
 
+        if not solver:
+            self.baseswap = None
+            self.swaption = None
+            self.oasCurve = None
+            
         return 100.-prm 
                 
     def solveSpread(self, termstructure, price, vol=1e-7, 
@@ -438,13 +447,15 @@ class SimpleBond(object):
         
         if not solveRatio:
             valueFunc = lambda x_: spreadFunc(termstructure, baseSpread+x_, 
-                                              baseRatio, vol, model=model)
+                                              baseRatio, vol, model=model,
+                                              solver=True)
             x_ = 0.0
             x1 = bondYTM - self.fairSwapRate(termstructure)
                 
         else:
             valueFunc = lambda x_: spreadFunc(termstructure, baseSpread, x_, vol,
-                                              model=model)
+                                              model=model,
+                                              solver=True)
             x_ = 1.0
             x1 = bondYTM / self.fairSwapRate(termstructure)
         
@@ -454,9 +465,13 @@ class SimpleBond(object):
             ratio, spread = value_, baseSpread
         else:
             ratio, spread = baseRatio, baseSpread + value_
-            
-        return self.value(termstructure, spread, ratio, vol, spreadType, model)
-
+        
+        retval = self.value(termstructure, spread, ratio, vol, spreadType, model)
+        self.baseswap = None
+        self.swaption = None
+        self.oasCurve = None
+        return retval
+        
     def solveImpliedVol(self, termstructure, price,
                               spread = 0.0,
                               ratio = 1.0,
@@ -479,7 +494,8 @@ class SimpleBond(object):
         objValue = -(price - 100.0) 
         
         valueFunc = lambda x_: spreadFunc(termstructure, spread, ratio, 
-                                          x_, model=model)
+                                          x_, model=model,
+                                              solver=True)
         
         # price can't be greater that 'zero' vol price or less than MAXVOL price
         # let's assume vol <= 1000%
@@ -492,8 +508,12 @@ class SimpleBond(object):
         x1 = 0.10
         vol_ = Secant(x_, x1, valueFunc, objValue)
         
-        return self.value(termstructure, spread, ratio, vol_, spreadType, model)
-
+        retval = self.value(termstructure, spread, ratio, vol_, spreadType, model)
+        self.baseswap = None
+        self.swaption = None
+        self.oasCurve = None
+        return retval
+        
     def value(self, termstructure,
                     spread = 0.0,
                     ratio = 1.0,
@@ -518,7 +538,11 @@ class SimpleBond(object):
         dvalues['vol'] = vol
         dvalues['model'] = model
         
-        return BondValues(dvalues)
+        retval = BondValues(dvalues)
+        self.baseswap = None
+        self.swaption = None
+        self.oasCurve = None
+        return retval
     
     def oas1(self, termstructure, 
                    bondprice=None, bondyield=None,

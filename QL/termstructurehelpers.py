@@ -91,6 +91,7 @@ class SwapRate(BGRateHelper):
                     fixingRate = cls.libor.fixing(fixingDate)
                 except:
                     # to hell with it...this won't be necessary in QuantLib1.0
+                    # TODO: use forceoverwrite in QL version 1.0
                     pass
                 
         return (fixingDate, fixingRate)

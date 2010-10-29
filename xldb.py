@@ -117,20 +117,20 @@ class XLOut(object):
     defaultstyle = xlwt.XFStyle()
     styles = {"date": datestyle}
     
-    def __init__(self, fname, sheets=1):
+    def __init__(self, fname, sheets=["Sheet1"]):
         self.filename = fname
         
         self.wkb = xlwt.Workbook()                
 
         self.sheet = {}
-        for n in range(sheets):
-            sheetname = "Sheet"+str(n+1)
+        for n in range(len(sheets)):
+            sheetname = sheets[n]
             self.sheet[n] = self.wkb.add_sheet(sheetname)
     
     def write(self, value_, row_, col_, sheet=1, format=None):
         style = self.styles.get(format, self.defaultstyle)
         
-        ws = self.sheet[sheet-1]
+        ws = self.sheet[sheet]
         ws.write(row_, col_, value_, style)
         
     def close(self):

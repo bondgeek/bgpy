@@ -8,6 +8,9 @@ class SolverExceptions(Exception):
     MAX_ITERATIONS = 24
     MIN_VALUE = 1e-12
 
+def interp(xValues, yValues, x):
+    pass
+    
 def Secant(x0, x1, valueFunc, objectiveValue):
         '''
         value function must be of one variable
