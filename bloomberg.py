@@ -52,13 +52,12 @@ def bbg_icvs(tenor_list, settle, ticker="S0023D", key="BLC2 Curncy"):
 class bbgVolSurface(object):
     '''
     Takes a range of tickers creates a dictionary keyed by expry and 'into' tenor.
-    
     interp(expry, term) -- interpolates along the surface.
     '''
     def __init__(self, tickers, volExprys, volTenors, update=False):
         if not hasattr(self, "Surface") or update:
             self.Surface = self.update(tickers, volExprys, volTenors)
-        
+
     def update(self, tickers, volExprys, volTenors):
             Surface = {}
             tnrs = [tnr for tnr in volTenors]
@@ -74,7 +73,7 @@ class bbgVolSurface(object):
                 Surface[tnrs[numCol]] = col_dict
             
             return Surface    
-        
+    
     def interp(self, expry, term):
         ''' expry into term'''
         tenors = self.Surface.keys()
@@ -104,3 +103,4 @@ class bbgVolSurface(object):
         v1 = vols[t1]
         volx = v0 + (v1-v0)*(t1 - term)/(t1-t0)
         return volx
+        
