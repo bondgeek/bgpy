@@ -26,7 +26,6 @@ class TermStructureModel(object):
         
         # TODO:  need to refactor to self.curve_
         self.curve = ql.RelinkableYieldTermStructureHandle()
-        self.upToDate = False
         self.discount = self.curve.discount
         self.zeroRate = self.curve.zeroRate
         self.referenceDate = self.curve.referenceDate
@@ -167,73 +166,83 @@ class SimpleCurve(TermStructureModel):
         self.ratehelpers = None
         self.instruments_ = ql.RateHelperVector()
         self.setIborIndex = setIborIndex
-                        
+
         if curvedata:
             self.update(curvedata, curvedate)
-                                    
+        else:
+            self.setDates(curvedate)
+            
+    def setDates(self, curvedate=None):
+        '''Set curvedate and settlement date.
+        If no curvedate is passed in, used QuantLib Settings
+        
+        '''
+        adjust = ql.TARGET().adjust
+
+        if not curvedate:
+            if not self.curvedate:
+                self.curvedate_ = ql.Settings.instance().getEvaluationDate()  
+        else:
+            self.curvedate_ = ql.toDate(curvedate)
+            ql.Settings.instance().setEvaluationDate(adjust(self.curvedate))
+        
+        self.settlement_ = self.calendar.advance(adjust(self.curvedate), 
+                                                self.settledays, 
+                                                ql.Days)
+        return self.settlement_
+    
+    @property
+    def curvedate(self):
+        return getattr(self, "curvedate_", None)
+    
+    @property
+    def settlement(self):
+        return self.settlement_
+        
     def update(self, curvedata, curvedate=None, datadivisor=None):
         "creates ratehelpers object"
         if datadivisor:
             self.datadivisor = datadivisor
+
+        self.setDates(curvedate)
             
         curvedata = self.cleancurvedata(curvedata)
-        
+        if self.setIborIndex:
+            SwapRate.setLibor(self.settlement, 
+                              self.curvedata[SwapRate.floatingLegIndex]/self.datadivisor)
+
         if self.ratehelpers:
             self.ratehelpers.update(curvedata)
         else:
             self.ratehelpers = HelperWarehouse(curvedata.keys(), 
                                                curvedata.values(), 
-                                               self.datadivisor)
-        if not curvedate:
-            curvedate = ql.Settings.instance().getEvaluationDate()
-            
-        self.curvedate = self.calendar.adjust(ql.toDate(curvedate))
-        self.settlement = self.calendar.advance(self.curvedate, 
-                                                self.settledays, ql.Days)
-                                                
-        ql.Settings.instance().setEvaluationDate(self.curvedate)
-        
-        if self.setIborIndex:
-            SwapRate.setLibor(self.settlement, 
-                              self.curvedata[SwapRate.floatingLegIndex]/self.datadivisor)
-
-        if not self.upToDate:
-            self.curve_(self.ratehelpers.vector)
+                                               self.datadivisor)                                       
+        self.curve_(self.ratehelpers.vector)
 
         return self
+  
+    def curve_(self, ratehelpervector):
+        "calc curve"
 
+        PYC = ql.PiecewiseFlatForward
+        curve = PYC(self.settlement, ratehelpervector, 
+                    ql.ActualActualISDA,
+                    self.JumpQuotes, self.JumpDates, self.accuracy)
+
+        curve.enableExtrapolation()   
+        self.curve.linkTo(curve)    
+        
     def reset(self):
         '''
         Returns True if existing curve is reset, otherwise False
         '''
         if self.ratehelpers:
+            SwapRate.clearIndex()
             self.ratehelpers = None
             self.curve = None
-            self.upToDate = False
             return True
         return False
-          
-    def checkcurve(self):
-        datakeys = self.curvedata.keys()
-        datakeys.sort(key = lambda x: ql.Tenor(x).term)
-        
-        check_ = []
-        for k in datakeys:
-            check_.append((k, (self.tenorpar(k)-self.curvedata[k]/self.datadivisor)*100.0))
-        return check_
-      
-    def curve_(self, ratehelpervector):
-        "calc curve"
 
-        PYC = ql.PiecewiseFlatForward
-        curve = PYC(self.settledays, self.calendar, ratehelpervector, 
-                    ql.ActualActualISDA,
-                    self.JumpQuotes, self.JumpDates, self.accuracy)
-
-        curve.enableExtrapolation()   
-        self.curve.linkTo(curve)
-        self.upToDate = True
-    
     def __str__(self):
         if self.label:
             return self.label

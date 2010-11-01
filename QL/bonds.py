@@ -18,10 +18,9 @@ from math import floor, fmod
 
 #globals
 calendar = ql.TARGET()
-
     
 #class definitions
-class BondExceptions(Exception):
+class BondException(Exception):
     MAX_PY_ITERATIONS = 24
     MAX_PY_ITERATIONS_MSG = "Max Iterations--%d--reached in price/yield calc" % MAX_PY_ITERATIONS
     MIN_YLD = 1e-7
@@ -30,7 +29,8 @@ class BondExceptions(Exception):
 class BondValues(Struct):
     alist = ['bondyield', 'price',
               'oasYield', 'callvalue', 'oasPrice', 
-              'spread', 'ratio', 'vol', 'spreadType', 'model']
+              'spread', 'ratio', 'gearedSpread',
+              'vol', 'spreadType', 'model']
               
     def __init__(self, valueDict):
         val_ = {}
@@ -136,11 +136,6 @@ class SimpleBond(object):
         self.oid = oid
         self.callfeature = callfeature
         
-        if not self.callfeature:  
-            self.calllist = []
-        else: 
-            self.calllist = self.CallList()
-
         self.setSettlement(settledate)
         
         # initialize swap structures for asset swap analysis
@@ -167,7 +162,15 @@ class SimpleBond(object):
                                                  ql.Days)
         else:
             self.settle_ = settledate
+        
+        # call list contains bond objects representing each call
+        # calling self.CallList sets those settlement dates.
+        if not self.callfeature:  
+            self.calllist = []
+        else: 
+            self.calllist = self.CallList()
             
+        
         #TODO: This maybe can be more robust for non-standard frequencies
         #      It works for annual, quarterly & semi-annual.
         freq = float(ql.freqValue(self.frequency))
@@ -201,7 +204,8 @@ class SimpleBond(object):
                                    issuedate = self.issuedate, 
                                    oid=self.oid,
                                    bondtype=self.bondtype, 
-                                   redvalue=price)
+                                   redvalue=price,
+                                   settledate=self.settlementDate)
                 calllist.append((calldate,price, cbond))
                 freq = ql.Period(call.frequency)
                 calldate = calendar.advance(calldate, freq, ql.Unadjusted)
@@ -302,8 +306,9 @@ class SimpleBond(object):
     def ytmToPrice(self, yld):
         """calculates price given yield"""    
         if(yld < 0.0):
-            raise BondExceptions, BondExceptions.NEG_YIELD_MSG
-        
+            print BondException.NEG_YIELD_MSG
+            # yld = BondException.MIN_YLD
+            
         if(yld==self.coupon):
             price = 100.0
         else:
@@ -346,8 +351,10 @@ class SimpleBond(object):
 
             try:
                 yld = Secant(y0, yg, self.ytmToPrice, price)
-            except:
+            except BondException:
                 print "Solver error in toYTM"
+                return BondException.MIN_YLD
+            except:
                 raise
                 
         return yld

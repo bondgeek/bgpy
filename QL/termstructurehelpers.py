@@ -62,13 +62,30 @@ class SwapRate(BGRateHelper):
     fixedLegAdjustment = ql.ModifiedFollowing
     fixedLegDayCounter = ql.Thirty360()
     calendar = ql.TARGET()
-    floatingLegIndex = '3M'
+    floatingLegIndex = "3M"
     floatingLegTenor = ql.Period(floatingLegIndex)
-    libor = ql.USDLibor(floatingLegTenor)
-    
+    libor = ql.USDLibor(floatingLegTenor)  
+        
     def __init__(self, tenor):
         BGRateHelper.__init__(self, tenor)
+    
+    @classmethod
+    def setIndex(cls, floatIndex="3M"):
+        cls.floatingLegIndex = floatIndex
+        
+    @classmethod
+    def newIndex(cls):
+        if getattr(cls, "libor", None):
+            cls.clearIndex()
             
+        cls.floatingLegTenor = ql.Period(cls.floatingLegIndex)
+        cls.libor = ql.USDLibor(cls.floatingLegTenor)       
+        return cls.libor
+        
+    @classmethod
+    def clearIndex(cls):
+        cls.libor = None
+        
     @classmethod
     def setLibor(cls, settlementDate, fixingRate=None):
         '''
@@ -93,7 +110,7 @@ class SwapRate(BGRateHelper):
                     # to hell with it...this won't be necessary in QuantLib1.0
                     # TODO: use forceoverwrite in QL version 1.0
                     pass
-                
+                          
         return (fixingDate, fixingRate)
     
     def _helper(self):        

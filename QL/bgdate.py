@@ -110,7 +110,8 @@ def toDate(*args):
     except AssertionError:
         raise StandardError("Date class expects 0, 1 or 3 arguments")
     
-    if nargs == 0 or not args[0]:
+    if nargs == 0 or (not args[0]) or (args[0] == qlDate()):
+        # c# bindings don't treat qlDate() as Null
         qDate = qlDate()
     elif nargs == 3:
         d, m, y = args
