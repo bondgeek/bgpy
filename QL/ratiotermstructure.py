@@ -84,8 +84,8 @@ class RatioCurve(TermStructureModel):
     def update(self, disc_termstr, curvedata):
         self.disc_termstr = disc_termstr
 
-        self.curvedate = disc_termstr.curvedate
-        self.settlement = disc_termstr.referenceDate()
+        self.curvedate_ = disc_termstr.curvedate
+        self.settlement_ = disc_termstr.referenceDate()
         
         curvedata = self.cleancurvedata(curvedata)
         

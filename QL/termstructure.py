@@ -30,6 +30,33 @@ class TermStructureModel(object):
         self.zeroRate = self.curve.zeroRate
         self.referenceDate = self.curve.referenceDate
             
+    def setDates(self, curvedate=None):
+        '''Set curvedate and settlement date.
+        If no curvedate is passed in, used QuantLib Settings
+        
+        '''
+        adjust = ql.TARGET().adjust
+
+        if not curvedate:
+            if not self.curvedate:
+                self.curvedate_ = ql.Settings.instance().getEvaluationDate()  
+        else:
+            self.curvedate_ = ql.toDate(curvedate)
+            ql.Settings.instance().setEvaluationDate(adjust(self.curvedate))
+        
+        self.settlement_ = self.calendar.advance(adjust(self.curvedate), 
+                                                self.settledays, 
+                                                ql.Days)
+        return self.settlement_
+
+    @property
+    def curvedate(self):
+        return getattr(self, "curvedate_", None)
+    
+    @property
+    def settlement(self):
+        return self.settlement_
+                
     def cleancurvedata(self, curve):
         '''
         Removes tenors with null values from curve.  Helpful if data has been read
@@ -171,34 +198,7 @@ class SimpleCurve(TermStructureModel):
             self.update(curvedata, curvedate)
         else:
             self.setDates(curvedate)
-            
-    def setDates(self, curvedate=None):
-        '''Set curvedate and settlement date.
-        If no curvedate is passed in, used QuantLib Settings
-        
-        '''
-        adjust = ql.TARGET().adjust
 
-        if not curvedate:
-            if not self.curvedate:
-                self.curvedate_ = ql.Settings.instance().getEvaluationDate()  
-        else:
-            self.curvedate_ = ql.toDate(curvedate)
-            ql.Settings.instance().setEvaluationDate(adjust(self.curvedate))
-        
-        self.settlement_ = self.calendar.advance(adjust(self.curvedate), 
-                                                self.settledays, 
-                                                ql.Days)
-        return self.settlement_
-    
-    @property
-    def curvedate(self):
-        return getattr(self, "curvedate_", None)
-    
-    @property
-    def settlement(self):
-        return self.settlement_
-        
     def update(self, curvedata, curvedate=None, datadivisor=None):
         "creates ratehelpers object"
         if datadivisor:
@@ -260,16 +260,28 @@ class ZCurve(TermStructureModel):
         
         if curvedata:
             self.update(curvedata, datadivisor)
-
+    
+    def setDates(self, settle):
+        '''Set curve evaluation and settlement dates.
+        Overides base class
+        
+        '''
+        self.settlement_ = settle
+        self.curvedate_ = ql.TARGET().advance(self.settlement_, 
+                                              -1*self.settledays, 
+                                              ql.Days)
+                                              
+        ql.Settings.instance().setEvaluationDate(self.curvedate)
+        
+        return self.settlement_
+        
     def update(self, curvedata, datadivisor=1.0):
         curvedata = self.cleancurvedata(curvedata)
 
         datevector = curvedata.keys()
         datevector.sort(key=lambda x: x.serialNumber())
         
-        self.settlement = datevector[0]
-        self.curvedate = ql.TARGET().advance(self.settlement, -1*self.settledays, ql.Days)
-        ql.Settings.instance().setEvaluationDate(self.curvedate)
+        self.setDates( datevector[0] )
                                  
         discountvector = ql.DoubleVector([float(curvedata[d]) for d in datevector])        
 
@@ -306,6 +318,11 @@ class SpreadedCurve(TermStructureModel):
         TermStructureModel.__init__(self, termstructure.datadivisor, 
                                           termstructure.settledays, 
                                           termstructure.label)
+                                          
+        # use curve/settle date properties from origin termstructure
+        self.curvedate_ = termstructure.curvedate
+        self.settlement_ = termstructure.settlement
+        
         self.spreadType = type                                  
         self.spread_ = ql.SimpleQuote(spread)
         curve = self.spreadedTermStructure_[type](termstructure.handle,
@@ -320,7 +337,3 @@ class SpreadedCurve(TermStructureModel):
         self.spread_.setValue(newvalue)
         
     spread = property(getSpread, setSpread)    
-    
-        
-class RatioBasisCurve(object):
-    pass
