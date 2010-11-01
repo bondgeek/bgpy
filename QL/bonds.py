@@ -415,9 +415,11 @@ class SimpleBond(object):
         '''
         self.assetSwap(termstructure, spread_, ratio_)
         
-        prm = self.baseswap.value(termstructure)
+        prm = self.baseswap.value(termstructure) * ratio_
         if self.swaption:
-            self.callvalue = self.swaption.value(vol, termstructure, model=model)
+            self.callvalue = self.swaption.value(vol, 
+                                                 termstructure, 
+                                                 model=model) * ratio_
             prm += self.callvalue
 
         if not solver:
@@ -425,7 +427,7 @@ class SimpleBond(object):
             self.swaption = None
             self.oasCurve = None
             
-        return 100.-prm 
+        return 100. - prm 
                 
     def solveSpread(self, termstructure, price, vol=1e-7, 
                           baseSpread = 0.0,
@@ -539,6 +541,7 @@ class SimpleBond(object):
         dvalues['spreadType'] = spreadType
         dvalues['spread'] = spread
         dvalues['ratio'] = ratio
+        dvalues['gearedSpread'] = spread * ratio
         dvalues['vol'] = vol
         dvalues['model'] = model
         
