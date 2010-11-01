@@ -5,14 +5,16 @@ and IronPython.
 
 
 System setup: 
--  create an environment variable BGPY_DATADIR pointing to the directory where bgpy will 
-   find data files (spreadsheets, flat files, sqlite databases--not MySQL databases)
+-  create an environment variable BGPY_DATADIR pointing to the directory 
+   where bgpy will find data files (spreadsheets, flat files, sqlite  
+   databases--not MySQL databases)
    BGPY_DATADIR does not have to be on PATH, PYTHONPATH or IRONPYTHONPATH
+   (defaults to HOMEPATH if not defined
    
    
 LICENSE
-bgpy is available under an MIT License and incorporates QuantLib which is licensed 
-under the modified BSD License (see below).
+bgpy is available under an MIT License and incorporates QuantLib which is 
+licensed under the modified BSD License (see below).
 
 The MIT License
 

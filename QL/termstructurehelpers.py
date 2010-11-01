@@ -76,7 +76,7 @@ class SwapRate(BGRateHelper):
         If no fixing rate is given, returns the fixing for the given date, 
         or None if does not exist--avoiding RuntimeError thrown by QuantLib
         '''
-        fixingDate = cls.libor.fixingDate(ql.bgDate(settlementDate))
+        fixingDate = cls.libor.fixingDate(ql.toDate(settlementDate))
         
         if not fixingRate:
             try:
@@ -117,12 +117,12 @@ class BondHelper(object):
                  issueDate=None):
         '''create QuantLib FixedRateBondHelper object'''            
         if todaysDate:
-            self.todaysDate = ql.bgDate(todaysDate)
+            self.todaysDate = ql.toDate(todaysDate)
         else:
             self.todaysDate = ql.Settings.instance().getEvaluationDate()
 
         if issueDate:
-            self.issueDate = ql.bgDate(issueDate) 
+            self.issueDate = ql.toDate(issueDate) 
         else:
             # just a kluge to insure that a semi-annual coupon has occured
             # before evaluationDate
@@ -136,12 +136,12 @@ class BondHelper(object):
             if tenor.unit == 'Y':
                 y = maturity.year()
                 m = maturity.month()
-                maturity = ql.bgDate(1, m, y)
+                maturity = ql.toDate(1, m, y)
             
             self.maturity = maturity
         
         else:
-            self.maturity = ql.bgDate(maturity)
+            self.maturity = ql.toDate(maturity)
             
     def getHelper(self, level, datadivisor=1.0):
         self.coupon, self.dollarprice = level

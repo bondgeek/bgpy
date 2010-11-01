@@ -1,5 +1,5 @@
 '''
-QLNet
+
 '''
 import sys
 
@@ -16,7 +16,7 @@ except:
 from QuantLib import *
 
 from bgpy import aliasReferences as _aliasReferences
-from bgdate import bgDate, dateTuple, dateFirstOfMonth
+from bgdate import toDate, dateTuple, dateFirstOfMonth
 
 _createAliases = vars().update
 
@@ -81,18 +81,20 @@ class Tenor(object):
         firstCh = True
         numTxt = ""
         unit="Y"
-        for i in txt.strip().replace(' ',''):
-            if(i.isalnum()):
-                if(i.isdigit()):
-                    if(firstCh):
-                        numTxt=numTxt+i
-                        if(firstNum):
-                            firstNum = False
-                elif(i.isalpha()):
-                    if(firstCh):                            
+        for i in str(txt).replace(' ',''):
+            if i.isalnum():
+                if i.isdigit():
+                    numTxt = numTxt + i
+                    
+                    if firstNum:
+                        firstNum = False
+                elif i.isalpha():
+                    if firstCh and (i.upper() in self._tenorUnits):                       
                         unit = i.upper()
+                        firstCh = False
             else:
                 pass
+                
         if(firstNum):
             numTxt="0"
         

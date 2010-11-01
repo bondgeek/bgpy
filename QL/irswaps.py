@@ -39,7 +39,7 @@ class USDLiborSwap(object):
                 spread=0.0, notionalAmount=100.0,
                 setPriceEngine=False):
         self.termstructure = termstructure
-        startDate, termDate = map(ql.bgDate, [startDate, termDate])
+        startDate, termDate = map(ql.toDate, [startDate, termDate])
         self.payFlag = FixedPayer if PayFlag else FixedReceiver
         self.startDate = startDate
         self.termDate = termDate
@@ -115,7 +115,7 @@ class USDLiborSwaption(object):
                 ):
         self.termstructure = termstructure
         self.spread = spread
-        firstCallDate, termDate = map(ql.bgDate, [firstCallDate, termDate])
+        firstCallDate, termDate = map(ql.toDate, [firstCallDate, termDate])
         self.swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, 
                             fixedRate, 
                             PayFlag, self.spread, 
@@ -168,7 +168,7 @@ class BasisSwap(ql.Swap):
                      fixedRatio, PayFlag=True, 
                      spread=0.0, notionalAmount=100.0,
                      setPriceEngine=False):
-        startDate, termDate = map(ql.bgDate, [startDate, termDate])
+        startDate, termDate = map(ql.toDate, [startDate, termDate])
         schedule = ql.Schedule(startDate, termDate,  
                                ql.Period(cls.frequency), 
                                cls.calendar,

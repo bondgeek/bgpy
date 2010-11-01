@@ -5,6 +5,8 @@ Created on May 26, 2010
 @author: bartmosley
 '''
 import bgpy.QL as ql
+
+from bgpy.math.solvers import Secant
 from termstructurehelpers import HelperWarehouse, SwapRate
         
 class TermStructureModel(object):
@@ -67,7 +69,7 @@ class TermStructureModel(object):
         '''
         Return forward deposit rate: (discount_beg/discount_end -1)/yearFrac
         '''
-        begDate, endDate = ql.bgDate(begDate), ql.bgDate(endDate)
+        begDate, endDate = ql.toDate(begDate), ql.toDate(endDate)
         discount = self.curve.discount
         yearFrac = dc.yearFraction(begDate, endDate)
         if yearFrac > 0.0:
@@ -79,7 +81,7 @@ class TermStructureModel(object):
         '''
         Returns floating leg  payment amount.
         '''
-        begDate, endDate = ql.bgDate(begDate), ql.bgDate(endDate)
+        begDate, endDate = ql.toDate(begDate), ql.toDate(endDate)
         yfrac = dc.yearFraction(begDate, endDate)
         return (self.forwardDepo(begDate, endDate, dc) + spread) * yfrac
         
@@ -97,12 +99,17 @@ class TermStructureModel(object):
         nper = int(term)
         frac = term - nper
         
-        # second argument to discount allows extrapolation
-        pvals = [discount((float(n)+frac)/freq, True) for n in range(nper+1)]
+        n0 = 1 if abs(frac) < 1e-12 else 0
         
-        t = pvals[0]
-        return 2.0 * (1.0/t - pvals[-1]) / (sum(pvals[1:])-(1.0-frac)/t)
- 
+        # second argument to discount allows extrapolation
+        pvals = [discount((float(n)+frac)/freq, True) for n in range(n0, nper+1)]
+        
+        c = 2.0 * (1.0 - pvals[-1]) / sum(pvals)
+        ai = lambda f, c: (1.-frac) * c if frac > 0.0 else 0.0
+        value = lambda x: ((1. + ai(frac, x)) - pvals[-1]) / sum(pvals) - x
+        
+        return Secant(c, c + .001, value, 0.0) * 2.0
+        
     def tenorpar(self, tenor):
         '''
         Returns par rate for given tenor -- e.g., termstr.tenorpar('10Y') 
@@ -180,7 +187,7 @@ class SimpleCurve(TermStructureModel):
         if not curvedate:
             curvedate = ql.Settings.instance().getEvaluationDate()
             
-        self.curvedate = self.calendar.adjust(ql.bgDate(curvedate))
+        self.curvedate = self.calendar.adjust(ql.toDate(curvedate))
         self.settlement = self.calendar.advance(self.curvedate, 
                                                 self.settledays, ql.Days)
                                                 

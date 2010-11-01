@@ -1,7 +1,7 @@
 '''
 Date functions
 
-Use bgDate to avoid problems with Resolvers .NET date class
+Use toDate to avoid problems with Resolvers .NET date class
 '''
 try:
     # CSharp QuantLib bindings
@@ -59,40 +59,48 @@ def dateTuple(dateObject):
     '''
     For a somewhat generic range of date objects, return month, day, year tuple
     '''
+    if not dateObject:
+        return None
+        
     dateObject = getattr(dateObject, "Value", dateObject)
+
+    try:    
+        if hasattr(dateObject, "DateTime"):
+            m, d, y = (dateObject.DateTime.Month,
+                       dateObject.DateTime.Day,
+                       dateObject.DateTime.Year)
+        elif (hasattr(dateObject, "Month") and
+              hasattr(dateObject, "Day") and
+              hasattr(dateObject, "Year") ):
+            m, d, y = (dateObject.Month,
+                       dateObject.Day,
+                       dateObject.Year)
+        elif type(dateObject) == str:
+            dtobj = strDateTuple(dateObject)
+            if dtobj:
+                m, d, y = dtobj
+            else:
+                return None 
+        elif type(dateObject) == pyDate:
+            y, m, d = dateObject.timetuple()[:3]
+        elif type(dateObject) == qlDate or hasattr(dateObject, "dayOfMonth"):
     
-    if hasattr(dateObject, "DateTime"):
-        m, d, y = (dateObject.DateTime.Month,
-                   dateObject.DateTime.Day,
-                   dateObject.DateTime.Year)
-    elif (hasattr(dateObject, "Month") and
-          hasattr(dateObject, "Day") and
-          hasattr(dateObject, "Year") ):
-        m, d, y = (dateObject.Month,
-                   dateObject.Day,
-                   dateObject.Year)
-    elif type(dateObject) == str:
-        m, d, y = strDateTuple(dateObject)
-    elif type(dateObject) == pyDate:
-        y, m, d = dateObject.timetuple()[:3]
-    elif type(dateObject) == qlDate or hasattr(dateObject, "dayOfMonth"):
-        try:
-            y, m, d = (dateObject.year(),
-                       dateObject.month(),
-                       dateObject.dayOfMonth())
-        except:
+                y, m, d = (dateObject.year(),
+                           dateObject.month(),
+                           dateObject.dayOfMonth())
+        else:
             return None
-    else:
+    except:
         return None
     
     m = getattr(m, "value__", m)
     
     return (m, d, y)
 
-def bgDate(*args):
+def toDate(*args):
     '''
-    Wrapper around QuantLib's Date class.
-    - Constructor allows passing in a wide range of date objects:
+    Returns an instance to QuantLib's Date class.
+    - allows passing in a wide range of date objects:
       .Net Date, python date, QuantLib Date, date string or day, month, year
     - Can pass month either as an integer or QuantLib Month.
     '''
@@ -102,7 +110,7 @@ def bgDate(*args):
     except AssertionError:
         raise StandardError("Date class expects 0, 1 or 3 arguments")
     
-    if nargs == 0:
+    if nargs == 0 or not args[0]:
         qDate = qlDate()
     elif nargs == 3:
         d, m, y = args
@@ -111,7 +119,7 @@ def bgDate(*args):
     elif nargs ==1:
         dtuple = dateTuple(args[0])
         if dtuple:
-            m, d, y = dtuple 
+            m, d, y = dtuple
             m_ = GetMonth(m)
             qDate = qlDate(d, m_, y)
         else:
@@ -122,6 +130,6 @@ def bgDate(*args):
     return qDate
 
 def dateFirstOfMonth(date_):
-    m, d, y = dateTuple(bgDate(date_))
-    return bgDate(1, m, y)
+    m, d, y = dateTuple(toDate(date_))
+    return toDate(1, m, y)
     

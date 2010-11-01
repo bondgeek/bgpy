@@ -8,7 +8,7 @@ Created on Jan 24, 2010
 
 import bgpy.QL as ql
 from bgpy.math.solvers import Secant, SolverExceptions
-from bgpy.QL import bgDate
+from bgpy.QL import toDate
 from bgpy.dpatterns import Struct
 
 import bgpy.QL.termstructure as ts
@@ -97,7 +97,7 @@ class Call(object):
         Create a call feature.
         '''
         # make sure we have a QuantLib compliant set of dates
-        firstcall, parcall = map(bgDate, [firstcall, parcall])
+        firstcall, parcall = map(toDate, [firstcall, parcall])
         self.firstcall = firstcall 
         self.callprice = callprice
         self.parcall = parcall
@@ -119,7 +119,7 @@ class SimpleBond(object):
                  bondtype=None, redvalue=100.,
                  settledate=None):
                  
-        maturity, issuedate, settledate = map(bgDate, [maturity, issuedate, 
+        maturity, issuedate, settledate = map(toDate, [maturity, issuedate, 
                                                        settledate])
         if bondtype is None:
             bondtype = BondType()
@@ -155,12 +155,16 @@ class SimpleBond(object):
         return "% ".join((str(self.coupon*100.0), str(self.maturity)))
     
     def setSettlement(self, settledate=None):
-        '''change settlement'''
-        settledate = bgDate(settledate)
-        if not settledate.serialNumber():
+        '''
+        Change settlement for bond calculations
+        '''
+        settledate = toDate(settledate)
+        
+        if not settledate:
             evalDate = ql.Settings.instance().getEvaluationDate() 
-            self.settle_ = self.calendar.advance(evalDate, self.settlementdays, 
-                                                           ql.Days)
+            self.settle_ = self.calendar.advance(evalDate,
+                                                 self.settlementdays, 
+                                                 ql.Days)
         else:
             self.settle_ = settledate
             
