@@ -84,7 +84,9 @@ def dateTuple(dateObject):
         elif type(dateObject) == pyDate:
             y, m, d = dateObject.timetuple()[:3]
         elif type(dateObject) == qlDate or hasattr(dateObject, "dayOfMonth"):
-    
+                if dateObject == qlDate():
+                    return None
+                    
                 y, m, d = (dateObject.year(),
                            dateObject.month(),
                            dateObject.dayOfMonth())
@@ -110,7 +112,7 @@ def toDate(*args):
     except AssertionError:
         raise StandardError("Date class expects 0, 1 or 3 arguments")
     
-    if nargs == 0 or (not args[0]) or (args[0] == qlDate()):
+    if nargs == 0 or (not args[0]):
         # c# bindings don't treat qlDate() as Null
         qDate = qlDate()
     elif nargs == 3:
