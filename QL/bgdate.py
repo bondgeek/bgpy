@@ -3,9 +3,12 @@ Date functions
 
 Use toDate to avoid problems with Resolvers .NET date class
 '''
+
+from bgpy.QL import Date as qlDate
+
 try:
     # CSharp QuantLib bindings
-    from QuantLib import Month
+    from bgpy.QL import Month
     def GetMonth(m):
         return getattr(Month, Month.GetName(Month, m))
 except:
@@ -13,7 +16,7 @@ except:
     def GetMonth(m):
         return m
                 
-from QuantLib import Date as qlDate
+
 from datetime import date as pyDate
 
 import re
@@ -113,8 +116,7 @@ def toDate(*args):
         raise StandardError("Date class expects 0, 1 or 3 arguments")
     
     if nargs == 0 or (not args[0]):
-        # c# bindings don't treat qlDate() as Null
-        qDate = qlDate()
+        qDate = None
     elif nargs == 3:
         d, m, y = args
         m_ = GetMonth(m)
@@ -126,13 +128,44 @@ def toDate(*args):
             m_ = GetMonth(m)
             qDate = qlDate(d, m_, y)
         else:
-            qDate = qlDate()
+            qDate = None
     else:
-        qDate = qlDate()
+        qDate = None
         
     return qDate
 
 def dateFirstOfMonth(date_):
     m, d, y = dateTuple(toDate(date_))
     return toDate(1, m, y)
+
+if __name__ == "__main__":
+    import unittest
+        
+    # TODO: will have to create separate test cases for c# bindings.
     
+    cases_toDate = (
+        (pyDate(1960, 8, 9), qlDate(9, GetMonth(8), 1960)),
+        (None, None),
+        ((23, 5, 1993), qlDate(23, GetMonth(5), 1993)) 
+        )
+        
+    def testComp(thing1, thing2):
+        if type(thing1) == tuple:
+            v1 = toDate(*thing1)
+        else:      
+            v1 = toDate(thing1)
+        v2 = thing2
+        if hasattr(v1, "serialNumber"):
+            v1 = v1.serialNumber()
+        if hasattr(v2, "serialNumber"):
+            v2 = v2.serialNumber()
+        
+        return v1==v2
+        
+    class TestDates(unittest.TestCase):            
+        def test_toDate(self):
+            for k, val in  cases_toDate:
+                self.assertTrue(testComp(k,  val))
+                
+    unittest.main()
+                
