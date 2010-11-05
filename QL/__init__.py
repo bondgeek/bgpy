@@ -16,7 +16,7 @@ except:
 from QuantLib import *
 
 from bgpy import aliasReferences as _aliasReferences
-from bgdate import toDate, dateTuple, dateFirstOfMonth
+from bgdate import toDate, dateTuple, dateFirstOfMonth, toPyDate
 
 _createAliases = vars().update
 

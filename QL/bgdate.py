@@ -3,6 +3,8 @@ Date functions
 
 Use toDate to avoid problems with Resolvers .NET date class
 '''
+import re
+from datetime import date as pyDate
 
 from bgpy.QL import Date as qlDate
 
@@ -16,11 +18,6 @@ except:
     def GetMonth(m):
         return m
                 
-
-from datetime import date as pyDate
-
-import re
-
 stddate_re = re.compile("[-//]".join(("([1-9]{1}|[0][1-9]|[1][0-2])", #regex month
                                    "([1-9]{1}|[0][1-9]|[1-3][0-9])", #regex day
                                    "([1-9][0-9]{3}|[0-9][0-9])")   #regex year
@@ -31,14 +28,26 @@ isodate_re = re.compile("[-//]".join(("([1-9][0-9]{3}|[0-9][0-9])",   #regex yea
                                    "([1-9]{1}|[0][1-9]|[1-3][0-9])") #regex day
                                   ))
 
+longdate_re = re.compile("(?P<Y>[1-9][0-9]{3})(?P<M>[0-1][0-9])(?P<D>[0-3][0-9])")                                  
 
+def ccyymmdd(date_long):
+    "returns m, d, y for ccyymmdd date (either integer or string)"
+    m = re.match(longdate_re, str(date_long))
+    if m is None:
+        return None
+    
+    return map(int, (m.group('M'), m.group('D'), m.group('Y')))
+    
 def strDateTuple(sdate, twodigitlag=40):
     '''
     Given a date in string format return month, day, year tuple
     - year is in ccyy format
     - date string may use either "-" or "/" separators
-    - date string may be mm/dd/ccyy, mm/dd/yy, ccyy-mm-dd, yy-mm-dd formats
+    - date string may be mm/dd/ccyy, mm/dd/yy, ccyy-mm-dd, yy-mm-dd 
+      or ccyymmdd formats
+    - an integer ccyymmdd also works (but not yymmdd).
     '''
+    sdate = str(sdate) # incase int is given
     stdgrp = re.match(stddate_re, sdate)
     isogrp = re.match(isodate_re, sdate)
     if stdgrp:
@@ -46,7 +55,8 @@ def strDateTuple(sdate, twodigitlag=40):
     elif isogrp:
         y, m, d = map(int, isogrp.groups())
     else:
-        return None
+        return ccyymmdd(sdate)
+        
     if y < 100:
         thisyear = pyDate.today().year
         baseyr = (thisyear - twodigitlag) % 100
@@ -78,7 +88,7 @@ def dateTuple(dateObject):
             m, d, y = (dateObject.Month,
                        dateObject.Day,
                        dateObject.Year)
-        elif type(dateObject) == str:
+        elif type(dateObject) in [str, int]:
             dtobj = strDateTuple(dateObject)
             if dtobj:
                 m, d, y = dtobj
@@ -134,6 +144,38 @@ def toDate(*args):
         
     return qDate
 
+def toPyDate(*args):
+    '''
+    Returns an instance of python's date class.
+    - allows passing in a wide range of date objects:
+      .Net Date, python date, QuantLib Date, date string or day, month, year
+    - Can pass month either as an integer or QuantLib Month.
+    '''
+    nargs = len(args)
+    try:
+        assert nargs <= 1 or nargs == 3
+    except AssertionError:
+        raise StandardError("Date class expects 0, 1 or 3 arguments")
+    
+    if nargs == 0 or (not args[0]):
+        qDate = None
+    elif nargs == 3:
+        y, m, d = args
+        m = getattr(m, "value__", m)
+        qDate = pyDate(y, m, d)
+    elif nargs ==1:
+        dtuple = dateTuple(args[0])
+        if dtuple:
+            m, d, y = dtuple
+            m = getattr(m, "value__", m)
+            qDate = pyDate(y, m, d)
+        else:
+            qDate = None
+    else:
+        qDate = None
+        
+    return qDate
+    
 def dateFirstOfMonth(date_):
     m, d, y = dateTuple(toDate(date_))
     return toDate(1, m, y)

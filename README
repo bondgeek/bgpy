@@ -10,6 +10,10 @@ System setup:
    databases--not MySQL databases)
    BGPY_DATADIR does not have to be on PATH, PYTHONPATH or IRONPYTHONPATH
    (defaults to HOMEPATH if not defined
+-  bgpy requires the modules xlrd and xlwt for manipulating *.xls files
+   on Windows/IronPython make sure these are not installed as eggs (i.e.,
+   don't use easy_install, install from source or use the Windows installer in 
+   the Cheese Shop.)
    
    
 LICENSE
