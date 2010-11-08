@@ -98,9 +98,9 @@ class Call(object):
         '''
         # make sure we have a QuantLib compliant set of dates
         firstcall, parcall = map(toDate, [firstcall, parcall])
-        self.firstcall = firstcall 
+        self.firstcall = firstcall if firstcall else ql.Date()
         self.callprice = callprice
-        self.parcall = parcall
+        self.parcall = parcall if parcall else ql.Date()
         self.frequency = frequency
         
     def __str__(self):
@@ -187,13 +187,22 @@ class SimpleBond(object):
     settlementDate = property(getSettlement, setSettlement)
     
     def CallList(self):
+        '''Converts Call Feature to list of call dates and bond objects.
+        
+        '''
+        
         calllist = []
         if self.callfeature:
             dtp = 0.0
             call = self.callfeature
+            
+            freq = ql.Period(call.frequency)
+            
             if ((call.parcall > call.firstcall) and 
                 (call.callprice > self.face)):
+                
                 callyears = self.daycount.yearFraction(call.firstcall, call.parcall)
+                
                 dtp = (call.callprice-self.face)/(ql.freqValue(call.frequency)*callyears)
             
             price = call.callprice
@@ -206,19 +215,23 @@ class SimpleBond(object):
                                    bondtype=self.bondtype, 
                                    redvalue=price,
                                    settledate=self.settlementDate)
+                                   
                 calllist.append((calldate,price, cbond))
-                freq = ql.Period(call.frequency)
+                
                 calldate = calendar.advance(calldate, freq, ql.Unadjusted)
                 
                 if calldate >= call.parcall:
-                    price = self.face if hasattr(self, 'face') else 100.0         
+                    price = getattr(self, "face", 100.0)         
                 else:
                     price = price - dtp
                 
         return calllist
        
     def maxPrice(self):
-        '''determines the price if yieldtoworst = 0 (or close to it)'''
+        '''
+        Determines the price if yieldtoworst = 0 (or close to it)
+        
+        '''
         self.maxPrice = self.toPrice(0.000001)
         return self.maxPrice
     
@@ -233,8 +246,9 @@ class SimpleBond(object):
                                                    'pricedTo': toDate
                                                    'toPrice': toPrice}
         '''
+    
         errstr = "calc(): bondyield=%s bondprice=%s exactly one must have a value"  
-        # Check bond's attributes if arguments not passed.
+        
         price = bondprice # needed to change argument for Resolver
         if not (bondyield or price):
             bondyield = getattr(self, "bondyield", None)
@@ -246,6 +260,7 @@ class SimpleBond(object):
             '''
             calculate yield to worst, if callable, given price, 
             otherwise returns ytm or vice versa
+            
             '''
             val = getattr(self, ytmfunc)(level)
             todate = self.maturity
