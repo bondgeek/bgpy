@@ -30,7 +30,10 @@ __copyright__ = 'Copyright (c) 2010 Bart Mosley, BG Research LLC'
 version = (0,0,1)
 version_string = "bgpy:  BG Tools version %d.%d.%d " % version
 
-HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', '.'))
+HOMEDRIVE = os.environ.get("HOMEDRIVE", None) # only for windows
+HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', None))
+HOMEPATH = os.path.join(HOMEDRIVE, HOMEPATH)
+
 DATADIR = os.environ.get('BGPY_DATADIR', HOMEPATH)
 PathJoin = os.path.join
 
