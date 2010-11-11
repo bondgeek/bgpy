@@ -354,15 +354,16 @@ class SimpleBond(object):
         Secant search is sufficient as price is generally well-behaved,
         and coupon, current yield are natural initial values.
         '''
-        if(round(price,6)==100.0):
+        if abs(price-100.0) < 1e-7:
             yld=self.coupon
         else:
             if(self.coupon > 0.0):
                 y0 = self.coupon
                 yg = 100.*self.coupon / price
             else:
-                y0 = getattr(self, "oid", .05)
-                yg = 100.*y0 / price if self.oid else .0501
+                y0 = getattr(self, "oid", None)
+                yg = 100.*y0 / price if self.oid else .04
+                y0 = y0 if y0 else .05
 
             try:
                 yld = Secant(y0, yg, self.ytmToPrice, price)
