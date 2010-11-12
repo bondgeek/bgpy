@@ -156,29 +156,5 @@ class Tenor(object):
     @property
     def qlTuple(self):
         return (self.length, self.timeunit)
-        
-def setLiborIndex(libor=None, settlementDate=None, fixingRate=None, liborTenor='3M'):
-    '''
-    Add a fixing for the appropriate date corresponding to a given settlement date.
-    If no fixing rate is given, returns the fixing for the given date, 
-    or None if does not exist--avoiding RuntimeError thrown by QuantLib
-    '''
-    if not libor:
-        libor = USDLibor(Tenor(liborTenor).qlPeriod)
 
-    if settlementDate:
-        assert settlementDate and fixingRate, "Must supply both settlementDate and fixingRate"
-        
-        fixingDate = libor.fixingDate(settlementDate)    
-        if fixingRate:
-            try:
-                libor.addFixing(fixingDate, fixingRate)
-            except:
-                return libor
-        else:
-            try:
-                fixing = libor.fixing(fixingDate)
-            except:
-                return libor
 
-    return libor

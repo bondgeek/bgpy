@@ -46,6 +46,7 @@ class BondType(object):
     '''
     Do not use except as base class
     '''
+    
     settlementdays = 3
     daycount = ql.Thirty360()
     paytenor = ql.Semiannual
@@ -61,33 +62,20 @@ class BondType(object):
                     
         return dict(zip(attrs_, [getattr(self, a) for a in attrs_]))
         
-class USTsyBond(BondType):
-    settlementdays = 2
-    daycount = ql.ActualActualBond
+class SimpleBondType(BondType):
+    settlementdays = 3
+    daycount = ql.Thirty360()
     paytenor = ql.Semiannual
     frequency = ql.Semiannual
-    payconvention = ql.ModifiedFollowing
+    payconvention = ql.Unadjusted
     termconvention = ql.Unadjusted
+    calendar = ql.USGovernmentBond
     face = 100.0
     
     def bondtype(self):
         d = BondType().bondtype()
         for k in d:
             d[k] = getattr(self,k)
-        return d
-
-class MuniBondType(BondType):
-    settlementdays = 3
-    daycount = ql.Thirty360()
-    frequency = ql.Semiannual
-    payconvention = ql.Following
-    termconvention = ql.Unadjusted
-    face = 100.0
-    
-    def bondtype(self):
-        d = BondType().bondtype()
-        for k in d:
-            d[k] = getattr(self, k)
         return d
 
 class Call(object):
@@ -109,26 +97,19 @@ class Call(object):
     def __repr__(self):
         return self.__str__()
 
-class SimpleBond(object):
+class SimpleBond(SimpleBondType):
     """
     Bond Object: 
     coupon, maturity, issuedate, oid, callfeature, bondtype, redvalue
     """
     def __init__(self, coupon, maturity, 
                  callfeature=None, oid=None, issuedate=None, 
-                 bondtype=None, redvalue=100.,
+                 redvalue=100.,
                  settledate=None):
                  
         maturity, issuedate, settledate = map(toDate, [maturity, issuedate, 
                                                        settledate])
-        if bondtype is None:
-            bondtype = BondType()
 
-        self.bondtype = bondtype
-        bt = bondtype.bondtype()
-        for attr in bt:
-            setattr(self, attr, bt[attr])
-                    
         self.coupon = coupon
         self.maturity = maturity
         self.issuedate = issuedate 
@@ -157,11 +138,15 @@ class SimpleBond(object):
         
         if not settledate:
             evalDate = ql.Settings.instance().getEvaluationDate() 
-            self.settle_ = self.calendar.advance(evalDate,
-                                                 self.settlementdays, 
-                                                 ql.Days)
+            settle_ = self.calendar.advance(evalDate,
+                                            self.settlementdays, 
+                                            ql.Days)
         else:
-            self.settle_ = settledate
+            settle_ = settledate
+        
+        if self.issuedate and self.daycount(self.issuedate, settle_) < 0: 
+            settle_ = self.issuedate
+        self.settle_ = settle_
         
         # call list contains bond objects representing each call
         # calling self.CallList sets those settlement dates.
@@ -169,13 +154,13 @@ class SimpleBond(object):
             self.calllist = []
         else: 
             self.calllist = self.CallList()
-            
-        
+                
         #TODO: This maybe can be more robust for non-standard frequencies
         #      It works for annual, quarterly & semi-annual.
         freq = float(ql.freqValue(self.frequency))
         self.term = freq * self.daycount.yearFraction(self.settle_, 
-                                                      self.maturity)
+                                                        self.maturity)
+        
         self.nper = floor(self.term)
         self.frac = self.term - self.nper
 
@@ -318,11 +303,13 @@ class SimpleBond(object):
         else:
                 return (1.-self.frac)*self.coupon/ql.freqValue(self.frequency)
             
-    def ytmToPrice(self, yld):
+    def ytmToPrice(self, yld, redemption=None):
         """calculates price given yield"""    
         if(yld < 0.0):
             print BondException.NEG_YIELD_MSG
             # yld = BondException.MIN_YLD
+        if not redemption:
+            redemption = self.redvalue
             
         if(yld==self.coupon):
             price = 100.0
@@ -337,7 +324,7 @@ class SimpleBond(object):
                 nxtcpn = 0.0
             else:
                 nxtcpn = cpn
-            prc = (t*(u*(1.0-z) + z*self.redvalue/100.0 + nxtcpn) - self.ai())*100.0
+            prc = (t*(u*(1.0-z) + z*redemption/100.0 + nxtcpn) - self.ai())*100.0
             price = round(prc,6)
 
         return price
@@ -348,12 +335,17 @@ class SimpleBond(object):
     def toPrice(self, _yield):
         return self.calc(_yield)
        
-    def toYTM(self, price):
+    def toYTM(self, price, redemption=None):
         '''
         Calculate yield to maturity from price.
         Secant search is sufficient as price is generally well-behaved,
         and coupon, current yield are natural initial values.
         '''
+        if not redemption:
+            redemption = self.redvalue
+            
+        objfunction = lambda x: self.ytmToPrice(x, redemption)
+        
         if abs(price-100.0) < 1e-7:
             yld=self.coupon
         else:
@@ -366,7 +358,7 @@ class SimpleBond(object):
                 y0 = y0 if y0 else .05
 
             try:
-                yld = Secant(y0, yg, self.ytmToPrice, price)
+                yld = Secant(y0, yg, objfunction, price)
             except BondException:
                 print "Solver error in toYTM"
                 return BondException.MIN_YLD
@@ -613,71 +605,3 @@ class SimpleBond(object):
         vol = vol if vol else 1e-12
         
         return valueFunc(bondprice, vol, spread, ratio)
-                
-class MuniBond(MuniBondType, SimpleBond):
-    '''
-    Muni Bond Object, inherits from SimpleBond
-    Override asset swap methods to allow gross up coupon and apply leverage. (instrument based approach).
-    
-    '''
-    def __init__(self, coupon, maturity, callfeature=None,
-                        oid=None,  issuedate=None,
-                       redvalue=100.0):
-        SimpleBond.__init__(self, coupon, maturity, callfeature, 
-                                  oid, issuedate, MuniBondType(),
-                                  redvalue)
-        
-    def qtax(self, settle=None, ptsyear=0.25):
-        """Calculate de minimus cut-off for market discount bonds"""
-        if settle or not self.settle_:
-            self.setSettlement(settle)
-            
-        if self.oid and self.oid > self.coupon:
-            self.qtaxoid = self.oid
-            self.qtaxrval = self.ytmToPrice(self.oid)
-        else:
-            self.qtaxoid = self.coupon
-            self.qtaxrval = 100.0
-            
-        self.amddemin = float(floor(self.nper / self.frequency)) * ptsyear
-        try:
-            self.qtaxyield = self.toYTM(self.qtaxrval - self.amddemin)
-        except:
-            self.qtaxyield = self.coupon
-            
-        return self.qtaxyield
-    
-    # TODO: allow after-tax yield to be passed in to get price.
-    def calcAfterTax(self, bondprice=None, bondyield=None,
-                     settle=None, capgains=.15, ordinc=.35,
-                     ptsyear=0.25):
-        '''
-        Calculate after-tax yield given price,
-        sets qtax flag to True if price is outside deminimus
-        '''
-        
-        # Check bond's attributes if arguments not passed.
-        errstr = "calcAfterTax(): price=%s bondyield=%s exactly one must have a value"
-        price = bondprice
-        if not (bondyield or price):
-            bondyield = getattr(self, "bondyield", None)
-            price = getattr(self, "price", None)
-            assert (not price or not bondyield), errstr % (price, bondyield)
-        else:
-            if bondyield:
-                price = self.calc(bondyield=bondyield)
-        self.qtax(settle, ptsyear)
-        
-        if price <= self.qtaxrval:
-            amd = max(self.qtaxrval - price, 0)
-            taxRate = capgains if amd < self.amddemin else ordinc
-            rval = 100 - amd * taxRate
-            aty = self.toYTM(price, redemption=rval)
-            self.qtaxflag = True
-        else:
-            aty = self.toYield(price)
-            self.qtaxflag = False
-            
-        return aty
-    
-    
