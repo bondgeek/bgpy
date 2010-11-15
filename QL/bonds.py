@@ -144,7 +144,7 @@ class SimpleBond(SimpleBondType):
         else:
             settle_ = settledate
         
-        if self.issuedate and self.daycount(self.issuedate, settle_) < 0: 
+        if self.issuedate and self.daycount.dayCount(self.issuedate, settle_) < 0: 
             settle_ = self.issuedate
         self.settle_ = settle_
         
@@ -196,8 +196,7 @@ class SimpleBond(SimpleBondType):
             while ql.ActualActual().dayCount(calldate, self.maturity) > 0:
                 cbond = SimpleBond(self.coupon, calldate, 
                                    issuedate = self.issuedate, 
-                                   oid=self.oid,
-                                   bondtype=self.bondtype, 
+                                   oid=self.oid, 
                                    redvalue=price,
                                    settledate=self.settlementDate)
                                    
@@ -379,7 +378,7 @@ class SimpleBond(SimpleBondType):
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
         '''     
-        assetSwapSettle = min(self.settle_, termstructure.referenceDate())
+        assetSwapSettle = termstructure.referenceDate()
         self.assetSwapCoupon = self.coupon / ratio   
         self.assetSwapRatio = ratio
         self.baseswap = USDLiborSwap(termstructure, 

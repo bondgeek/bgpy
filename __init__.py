@@ -37,6 +37,8 @@ HOMEPATH = os.path.join(HOMEDRIVE, HOMEPATH)
 DATADIR = os.environ.get('BGPY_DATADIR', HOMEPATH)
 PathJoin = os.path.join
 
+from bgpy.xldb import XLdb, XLOut
+
 def aliasReferences(namespc, oldspace=None, ignorePrivate=True):
     '''
     Take a reference to a namespace and create alias dict object 

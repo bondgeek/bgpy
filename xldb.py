@@ -92,13 +92,16 @@ class XLdb(object):
             else:
                 xrvalues = rowValues(xr, startloc)
                 
-                if header and (xr[0] not in self.refcolumn):
-                    self.refcolumn.append(xr[0])
                 
                 if idx_column >= 0:    
                     dkey = xr[idx_column] 
                 else: 
                     dkey = xrow
+                
+                # refcolumn is an ordered list of keys,
+                # preserving order in spreadsheet, unlike dict.__keys__
+                if header and (dkey not in self.refcolumn):
+                    self.refcolumn.append(dkey)
                     
                 self.qdata[dkey] = xrvalues
     
@@ -107,6 +110,24 @@ class XLdb(object):
             return self.qdata.get(key, None)
         else:
             return None
+    
+    def column(self, columnName, reduce=True):
+        '''Returns a list for the given column. 
+        
+        columnName:  The header for the data in qdata.
+        reduce:      [default=True], reduces the list to remove Null values
+        
+        Will retun an empty list if columnName is not a header in the 
+        spreadsheet data, not and error.
+        
+        '''
+        colList = [self.qdata[recx].get('Cusip', None) 
+                   for recx in self.refcolumn]
+                   
+        if reduce:
+            return filter(lambda x: x is not None, colList)
+        else:
+            return colList
             
     def xlCellValue(self, x):
         return xlValue(x, self.datemode, self.hash_comments)
