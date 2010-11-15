@@ -3,6 +3,8 @@ import bgpy.QL as ql
 import bgpy.QL.termstructure as ts
 from MarketData.Bloomberg import BLPSync
 
+print("DeprecationWarning: bgpy.bloomberg should be alprion.bloomberg!")
+
 BLPS = lambda x, f_: BLPSync(x, f_, timeout=5000)
 
 class bbgblp(object):

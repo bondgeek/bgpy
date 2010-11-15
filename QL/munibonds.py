@@ -86,7 +86,37 @@ class MuniBond(MuniBondType, SimpleBond):
             
         return aty
 
+    def solveRatio(self, termstructure, price, vol=1e-7, 
+                         baseSpread = 0.0,
+                         spreadType = "S",
+                         model=ql.BlackKarasinski):
+        'shortcut for solveSpread, solveRatio=True, defaults to zero-spread ratio'
+        return self.solveSpread(termstructure, price, vol, 
+                                baseSpread, 1.0, True,
+                                spreadType,
+                                model)
+    
+    def basisSwapSpread(self, ratioTermstructure, price, vol=1e-7,
+                              baseSpread=0.0,
+                              spreadType = "S",
+                              model=ql.BlackKarasinski):
+        '''Returns asset swap spread relative to given ratio basis curve.
+        
+        '''
+        msg = "Termstructure in basisSwapSpread must be RatioCurve"
+        assert hasattr(ratioTermstructure, "maturityRatio"), msg
+        
+        termstructure = ratioTermstructure.disc_termstr        
+        solveRatio = False
+        baseRatio = ratioTermstructure.maturityRatio(self.maturity)
 
+        return self.solveSpread(termstructure, price, vol, 
+                                baseSpread, 
+                                baseRatio, 
+                                solveRatio,
+                                spreadType,
+                                model)        
+                                  
 if __name__ == "__main__":
     
     testcases = {'1': 

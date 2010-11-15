@@ -154,7 +154,21 @@ class RatioCurve(TermStructureModel):
         sum2 = sum([df * fwdmuni for df, fwdmuni, fwdlbr, mdf, d0, dt in pvals])
         
         return sum2/sum1
-
+    
+    def maturityRatio(self, maturity):
+        nYears = ql.ActualActual().yearFraction(self.referenceDate(), maturity)
+        
+        y0 = int(nYears)
+        y1 = y0 + 1
+        f = nYears - float(y0)
+        
+        r0 = self.parRatio("%s" % y0) if y0 > 0 else self.parRatio('1W')
+        r1 = self.parRatio("%s" % y1)
+        
+        ratio = r0 * (1-f) + r1 * f
+        
+        return ratio
+    
     def bootstrap(self, instruments):
         '''
         bootstrap ratios, assuming linear forward ratios
