@@ -156,6 +156,7 @@ class RatioCurve(TermStructureModel):
         return sum2/sum1
     
     def maturityRatio(self, maturity):
+        maturity = ql.toDate(maturity)
         nYears = ql.ActualActual().yearFraction(self.referenceDate(), maturity)
         
         y0 = int(nYears)
