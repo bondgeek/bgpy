@@ -247,7 +247,7 @@ class SimpleCurve(TermStructureModel):
         if self.label:
             return self.label
         else:
-            return "SimpleCurve"
+            return "<SimpleCurve>"
     
 class ZCurve(TermStructureModel):
     '''
@@ -299,16 +299,18 @@ class ZCurve(TermStructureModel):
         
     def __str__(self):
         if self.label:
-            return self.label
+            return self.label.join(("<", ">"))
         else:
-            return "SimpleCurve"
+            return "<ZCurve>"
 
 class SpreadedCurve(TermStructureModel):
-    '''
+    '''SpreadedCurve(termstructure, spread=0.0, type="Z")
+    
     Create a termstructure object spread from a reference
     Value types:
         "F" = ForwardSpreadTermStructure
         "Z" = ZeroSpreadedTermStructure
+        
     '''
     spreadedTermStructure_ = {"F": ql.ForwardSpreadedTermStructure,
                               "Z": ql.ZeroSpreadedTermStructure }
@@ -335,5 +337,11 @@ class SpreadedCurve(TermStructureModel):
     
     def setSpread(self, newvalue):
         self.spread_.setValue(newvalue)
-        
+    
+    def __str__(self):
+        if self.label:
+            return self.label.join(("<", ">"))
+        else:
+            return "<SimpleCurve>"
+            
     spread = property(getSpread, setSpread)    

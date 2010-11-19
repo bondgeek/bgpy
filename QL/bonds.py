@@ -563,6 +563,7 @@ class SimpleBond(SimpleBondType):
         self.baseswap = None
         self.swaption = None
         self.oasCurve = None
+        
         return retval
     
     def oas1(self, termstructure, 
@@ -604,3 +605,8 @@ class SimpleBond(SimpleBondType):
         vol = vol if vol else 1e-12
         
         return valueFunc(bondprice, vol, spread, ratio)
+
+    def sensitivity(self, termstructure, dollarprice, bondyield):
+        pass
+        
+        
