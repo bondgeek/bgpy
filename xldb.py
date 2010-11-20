@@ -153,7 +153,7 @@ class XLOut(object):
         
         ws = self.sheet[sheet]
         ws.write(row_, col_, value_, style)
-        
-    def close(self):
+    
+   
+    def save(self):
         self.wkb.save(self.filename)
-        
