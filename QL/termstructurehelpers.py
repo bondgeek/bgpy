@@ -6,7 +6,11 @@ Handles Helpers.
 Created on September, 2010
 @author: bartmosley
 '''
-import bgpy.QL as ql
+
+import bgpy.__QuantLib as ql
+
+from bgpy.QL.bgdate import toDate
+from bgpy.QL.tenor import Tenor
 
 class BGRateHelper(object):
     '''
@@ -25,7 +29,7 @@ class BGRateHelper(object):
     settlementDays = 2
     
     def __init__(self, tenor):
-        self.tenor = ql.Tenor(tenor).qlPeriod
+        self.tenor = Tenor(tenor).qlPeriod
 
     def _helper(self):
         "Must be overloaded on subclass level."
@@ -63,8 +67,8 @@ class SwapRate(BGRateHelper):
     fixedLegDayCounter = ql.Thirty360()
     calendar = ql.TARGET()
     floatingLegIndex = "3M"
-    floatingLegTenor = ql.Period(floatingLegIndex)
-    libor = ql.USDLibor(floatingLegTenor)  
+    floatingLegPeriod = ql.Period(floatingLegIndex)
+    libor = ql.USDLibor(floatingLegPeriod)  
         
     def __init__(self, tenor):
         BGRateHelper.__init__(self, tenor)
@@ -78,8 +82,8 @@ class SwapRate(BGRateHelper):
         if getattr(cls, "libor", None):
             cls.clearIndex()
             
-        cls.floatingLegTenor = ql.Period(cls.floatingLegIndex)
-        cls.libor = ql.USDLibor(cls.floatingLegTenor)       
+        cls.floatingLegPeriod = ql.Period(cls.floatingLegIndex)
+        cls.libor = ql.USDLibor(cls.floatingLegPeriod)       
         return cls.libor
         
     @classmethod
@@ -93,7 +97,7 @@ class SwapRate(BGRateHelper):
         If no fixing rate is given, returns the fixing for the given date, 
         or None if does not exist--avoiding RuntimeError thrown by QuantLib
         '''
-        fixingDate = cls.libor.fixingDate(ql.toDate(settlementDate))
+        fixingDate = cls.libor.fixingDate(toDate(settlementDate))
         
         if not fixingRate:
             try:
@@ -134,31 +138,31 @@ class BondHelper(object):
                  issueDate=None):
         '''create QuantLib FixedRateBondHelper object'''            
         if todaysDate:
-            self.todaysDate = ql.toDate(todaysDate)
+            self.todaysDate = toDate(todaysDate)
         else:
             self.todaysDate = ql.Settings.instance().getEvaluationDate()
 
         if issueDate:
-            self.issueDate = ql.toDate(issueDate) 
+            self.issueDate = toDate(issueDate) 
         else:
             # just a kluge to insure that a semi-annual coupon has occured
             # before evaluationDate
             self.issueDate = self.calendar.advance(self.todaysDate, 
                                                    -12, ql.Months)
         if type(maturity) is str:
-            tenor = ql.Tenor(maturity)            
+            tenor = Tenor(maturity)            
             maturity = self.calendar.advance(self.todaysDate,
                                              tenor.length,
                                              tenor.timeunit)
             if tenor.unit == 'Y':
                 y = maturity.year()
                 m = maturity.month()
-                maturity = ql.toDate(1, m, y)
+                maturity = toDate(1, m, y)
             
             self.maturity = maturity
         
         else:
-            self.maturity = ql.toDate(maturity)
+            self.maturity = toDate(maturity)
             
     def getHelper(self, level, datadivisor=1.0):
         self.coupon, self.dollarprice = level
@@ -200,7 +204,7 @@ class SimpleHelper(dict):
         if use:
             ratehelper = use(tenor)  
         elif type(tenor) is str:
-            tnr = ql.Tenor(tenor)
+            tnr = Tenor(tenor)
         
             #TODO:  this logic needs to be more generic
             helpertype = 's' if tnr.unit == 'Y' else 'd'

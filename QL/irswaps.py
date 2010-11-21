@@ -5,8 +5,9 @@ Created on Oct 14, 2009
 '''
 from math import exp, log
 
-import bgpy.QL as ql
-import bgpy.QL.termstructure as ts
+import bgpy.__QuantLib as ql
+
+from bgpy.QL.bgdate import toDate
 
 FixedPayer = ql.VanillaSwap.Payer
 FixedReceiver = ql.VanillaSwap.Receiver
@@ -27,19 +28,19 @@ class USDLiborSwap(object):
     fixedLegFrequency = ql.Semiannual
     fixedLegAdjustment = ql.Unadjusted
     fixedLegDayCounter =  ql.Thirty360()
-    fixedLegTenor = ql.Period(fixedLegFrequency)
+    fixedLegPeriod = ql.Period(fixedLegFrequency)
 
     floatingLegFrequency =  ql.Quarterly
     floatingLegAdjustment =  ql.ModifiedFollowing
     floatingLegDayCounter = ql.Actual360()
-    floatingLegTenor = ql.Period(3, ql.Months)
+    floatingLegPeriod = ql.Period(3, ql.Months)
     calendar = ql.TARGET()
     
     def __init__(self, termstructure, startDate, termDate, fixedRate, PayFlag=1, 
                 spread=0.0, notionalAmount=100.0,
                 setPriceEngine=False):
         self.termstructure = termstructure
-        startDate, termDate = map(ql.toDate, [startDate, termDate])
+        startDate, termDate = map(toDate, [startDate, termDate])
         self.payFlag = FixedPayer if PayFlag else FixedReceiver
         self.startDate = startDate
         self.termDate = termDate
@@ -47,19 +48,19 @@ class USDLiborSwap(object):
         
         self.spread = spread
         
-        self.floatingLegIndex_  = ql.USDLibor(self.floatingLegTenor, 
+        self.floatingLegIndex_  = ql.USDLibor(self.floatingLegPeriod, 
                                               self.termstructure.handle)
         
         self.fixedSched_ = ql.Schedule(self.startDate, 
                                  self.termDate,  
-                                 self.fixedLegTenor, 
+                                 self.fixedLegPeriod, 
                                  self.calendar,
                                  self.fixedLegAdjustment, 
                                  self.fixedLegAdjustment,
                                  ql.Forward, False)
                                  
         self.floatingSched_ = ql.Schedule(startDate, termDate,  
-                                 self.floatingLegTenor, 
+                                 self.floatingLegPeriod, 
                                  self.calendar,
                                  self.floatingLegAdjustment, 
                                  self.floatingLegAdjustment,
@@ -78,6 +79,10 @@ class USDLiborSwap(object):
         else:
             self.pricingEngine = None
     
+    # TODO: set, get initial Libor property
+    # conform value method across instruments
+    # generic risk sensitivity metrics for termstructured instruments
+    #
     @property
     def fixedSchedule(self):
         return self.fixedSched_
@@ -115,7 +120,7 @@ class USDLiborSwaption(object):
                 ):
         self.termstructure = termstructure
         self.spread = spread
-        firstCallDate, termDate = map(ql.toDate, [firstCallDate, termDate])
+        firstCallDate, termDate = map(toDate, [firstCallDate, termDate])
         self.swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, 
                             fixedRate, 
                             PayFlag, self.spread, 
@@ -123,10 +128,10 @@ class USDLiborSwaption(object):
         
         if bermudan:
             lastCallDate = self.swap.swap.fixedSched.date(self.swap.fixedSched.size()-2)
-            schedTenor = ql.Period(callFrequency)
+            schedPeriod = ql.Period(callFrequency)
             
             bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
-                                      schedTenor, 
+                                      schedPeriod, 
                                       self.calendar,
                                       swap.fixedLegAdjustment, 
                                       swap.fixedLegAdjustment,
@@ -168,7 +173,7 @@ class BasisSwap(ql.Swap):
                      fixedRatio, PayFlag=True, 
                      spread=0.0, notionalAmount=100.0,
                      setPriceEngine=False):
-        startDate, termDate = map(ql.toDate, [startDate, termDate])
+        startDate, termDate = map(toDate, [startDate, termDate])
         schedule = ql.Schedule(startDate, termDate,  
                                ql.Period(cls.frequency), 
                                cls.calendar,

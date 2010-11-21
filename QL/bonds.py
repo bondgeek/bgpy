@@ -6,12 +6,12 @@ Created on Jan 24, 2010
 @author: Bart Mosley
 '''
 
-import bgpy.QL as ql
-from bgpy.math.solvers import Secant, SolverExceptions
+import bgpy.__QuantLib as ql
+
 from bgpy.QL import toDate
 from bgpy.dpatterns import Struct
-
-import bgpy.QL.termstructure as ts
+from bgpy.math.solvers import Secant, SolverExceptions
+from bgpy.QL.termstructure import SpreadedCurve
 from bgpy.QL.irswaps import USDLiborSwap, USDLiborSwaption, BasisSwap
 
 from math import floor, fmod
@@ -49,7 +49,6 @@ class BondType(object):
     
     settlementdays = 3
     daycount = ql.Thirty360()
-    paytenor = ql.Semiannual
     frequency = ql.Semiannual
     payconvention = ql.Unadjusted
     termconvention = ql.Unadjusted
@@ -57,7 +56,7 @@ class BondType(object):
     face = 100.0
     
     def bondtype(self):
-        attrs_ = ('settlementdays', 'daycount', 'frequency','paytenor',
+        attrs_ = ('settlementdays', 'daycount', 'frequency',
                   'payconvention', 'termconvention', 'face', 'calendar')
                     
         return dict(zip(attrs_, [getattr(self, a) for a in attrs_]))
@@ -65,7 +64,6 @@ class BondType(object):
 class SimpleBondType(BondType):
     settlementdays = 3
     daycount = ql.Thirty360()
-    paytenor = ql.Semiannual
     frequency = ql.Semiannual
     payconvention = ql.Unadjusted
     termconvention = ql.Unadjusted
@@ -251,7 +249,7 @@ class SimpleBond(SimpleBondType):
             toprice = self.redvalue
 
             if self.calllist:
-                earliestcall= calendar.advance(self.settle_, ql.Period(self.paytenor))
+                earliestcall= calendar.advance(self.settle_, ql.Period(self.frequency))
                 
                 for call in self.calllist:
                     calldt, callpx, cbond = call
@@ -368,7 +366,7 @@ class SimpleBond(SimpleBondType):
         
     def fairSwapRate(self, termstructure):
         '''
-        calculate the fair swap rate matching structure of non-call portion of bond
+        calculate the fair swap rate matching maturity of the bond
         '''
         return termstructure.bondpar(self.maturity)
 
@@ -404,7 +402,7 @@ class SimpleBond(SimpleBondType):
         OAS given spread
         '''
         if (not solver) or not (self.oasCurve and self.baseswap):
-            self.oasCurve = ts.SpreadedCurve(termstructure, type="Z")
+            self.oasCurve = SpreadedCurve(termstructure, type="Z")
             self.assetSwap(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread

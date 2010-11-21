@@ -1,9 +1,10 @@
-
-import bgpy.QL as ql
-from termstructurehelpers import HelperWarehouse, SwapRate
-
 from math import floor
 
+import bgpy.__QuantLib as ql
+
+from bgpy.QL.bgdate import toDate
+from bgpy.QL.tenor import Tenor
+from termstructurehelpers import HelperWarehouse, SwapRate
 from termstructure import TermStructureModel
 
 class RatioHelper(object):
@@ -13,14 +14,14 @@ class RatioHelper(object):
     calendar = ql.TARGET()
     muniLegDayCount = ql.ActualActualISDA
     
-    basisTenor = ql.Tenor('3M')
+    basisTenor = Tenor('3M')
     basisFrequency =  ql.Quarterly
     
     businessDayAdjustment =  ql.ModifiedFollowing
     liborLegDayCount = ql.Actual360()
     
     def __init__(self, tenor):
-        self.tenor = ql.Tenor(tenor)
+        self.tenor = Tenor(tenor)
         
         # term in number of pay periods
         self.term = self.tenor.term
@@ -119,7 +120,7 @@ class RatioCurve(TermStructureModel):
         
         '''
         if type(enddate) == str:
-            enddate = ql.Tenor(enddate).advance(begdate, ql.ModifiedFollowing)
+            enddate = Tenor(enddate).advance(begdate, ql.ModifiedFollowing)
             
         return self.forwardPayment(begdate, enddate)/ self.disc_termstr.forwardPayment(begdate, enddate)
                 
@@ -133,10 +134,10 @@ class RatioCurve(TermStructureModel):
         munidisc = self.discount
         discount = lbrcrv.discount              #function calls
         advance = self.calendar.advance         #function calls
-        tnr = ql.Tenor(tenor)
+        tnr = Tenor(tenor)
         if tnr.unit != 'Y':
             zeroRate = self.zeroRate
-            enddt = ql.Tenor(tenor).advance(self.settlement)
+            enddt = Tenor(tenor).advance(self.settlement)
             munirate =  self.forwardDepo(self.settlement, enddt, ql.Actual360())
             liborrate = lbrcrv.forwardDepo(self.settlement, enddt, ql.Actual360())
             return munirate / liborrate
@@ -156,7 +157,7 @@ class RatioCurve(TermStructureModel):
         return sum2/sum1
     
     def maturityRatio(self, maturity):
-        maturity = ql.toDate(maturity)
+        maturity = toDate(maturity)
         nYears = ql.ActualActual().yearFraction(self.referenceDate(), maturity)
         
         y0 = int(nYears)

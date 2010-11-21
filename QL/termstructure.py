@@ -4,8 +4,10 @@ Term Structure Classes--a set of wrappers around QuantLib
 Created on May 26, 2010
 @author: bartmosley
 '''
-import bgpy.QL as ql
+import bgpy.__QuantLib as ql
 
+from bgpy.QL.bgdate import toDate
+from bgpy.QL.tenor import Tenor
 from bgpy.math.solvers import Secant
 from termstructurehelpers import HelperWarehouse, SwapRate
         
@@ -41,7 +43,7 @@ class TermStructureModel(object):
             if not self.curvedate:
                 self.curvedate_ = ql.Settings.instance().getEvaluationDate()  
         else:
-            self.curvedate_ = ql.toDate(curvedate)
+            self.curvedate_ = toDate(curvedate)
             ql.Settings.instance().setEvaluationDate(adjust(self.curvedate))
         
         self.settlement_ = self.calendar.advance(adjust(self.curvedate), 
@@ -95,7 +97,7 @@ class TermStructureModel(object):
         '''
         Return forward deposit rate: (discount_beg/discount_end -1)/yearFrac
         '''
-        begDate, endDate = ql.toDate(begDate), ql.toDate(endDate)
+        begDate, endDate = toDate(begDate), toDate(endDate)
         discount = self.curve.discount
         yearFrac = dc.yearFraction(begDate, endDate)
         if yearFrac > 0.0:
@@ -107,7 +109,7 @@ class TermStructureModel(object):
         '''
         Returns floating leg  payment amount.
         '''
-        begDate, endDate = ql.toDate(begDate), ql.toDate(endDate)
+        begDate, endDate = toDate(begDate), toDate(endDate)
         yfrac = dc.yearFraction(begDate, endDate)
         return (self.forwardDepo(begDate, endDate, dc) + spread) * yfrac
         
@@ -142,7 +144,7 @@ class TermStructureModel(object):
         '''
         discount = self.curve.discount              #function calls
         advance = ql.TARGET().advance         #function calls
-        tnr = ql.Tenor(tenor)
+        tnr = Tenor(tenor)
         settle = self.curve.referenceDate()
         
         if tnr.unit != 'Y':

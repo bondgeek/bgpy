@@ -6,7 +6,7 @@ Use toDate to avoid problems with Resolvers .NET date class
 import re
 from datetime import date as pyDate
 
-from bgpy.QL import Date as qlDate
+from bgpy.__QuantLib import Date as qlDate
 
 try:
     # CSharp QuantLib bindings

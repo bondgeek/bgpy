@@ -38,22 +38,3 @@ DATADIR = os.environ.get('BGPY_DATADIR', HOMEPATH)
 PathJoin = os.path.join
 
 from bgpy.xldb import XLdb, XLOut
-
-def aliasReferences(namespc, oldspace=None, ignorePrivate=True):
-    '''
-    Take a reference to a namespace and create alias dict object 
-    to be passed to vars().update
-    
-    Optionally, provide oldspace=vars() to allow check against overwriting
-    existing objects.
-    '''
-    newspace = {}
-    if not oldspace:
-        oldspace = newspace
-        
-    for _v in dir(namespc):
-        if ignorePrivate and (_v.startswith("_") or _v.endswith("_")):
-            continue
-        if not oldspace.get(_v, None):
-            newspace[_v] = getattr(namespc, _v, None)
-    return newspace
