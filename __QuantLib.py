@@ -65,7 +65,11 @@ if CONFIG_NAME == 'IPY':
     vars().update(_aliasReferences(TimeUnit, vars()))
     vars().update(_aliasReferences(DateGeneration.Rule, vars()))
 
-
+    def bermudanExercise(sched_):
+        dates = [sched_.date(n) for n in range(sched_.size())]
+        
+        return BermudanExercise( DateVector(dates) )
+        
 else:
     # Matching c-sharp QuantLib bindings on Vectors / Schedule
     # because you can't go the other way (c++ to c#)
@@ -86,3 +90,6 @@ else:
     Thirty360Bond = Thirty360(Thirty360.BondBasis)
     Thirty360EuroBond = Thirty360(Thirty360.EurobondBasis)
     vars().update(_aliasReferences(DateGeneration, vars()))
+        
+    def bermudanExercise(sched_):
+        return BermudanExercise( sched_ )

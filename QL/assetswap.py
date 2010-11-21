@@ -30,7 +30,6 @@ class BondValues(Struct):
         return "<%3.3f, %2.3f>" % (self.get("price", 0.0), 
                                    100.0*self.get("bondyield", 0.0))
         
-
 class AssetSwap(object):
     
     def __init__(self, bond, termstructure=None, spread=0.0, ratio=1.0):
@@ -53,6 +52,9 @@ class AssetSwap(object):
         if termstructure:
             self.update(termstructure, spread, ratio)
     
+    def __str__(self):
+        return "<AssetSwap>"
+        
     def fairSwapRate(self, termstructure):
         '''
         calculate the fair swap rate matching maturity of the bond

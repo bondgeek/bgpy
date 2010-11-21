@@ -8,6 +8,7 @@ from math import exp, log
 import bgpy.__QuantLib as ql
 
 from bgpy.QL.bgdate import toDate
+from bgpy.QL.tenor import Tenor
 
 FixedPayer = ql.VanillaSwap.Payer
 FixedReceiver = ql.VanillaSwap.Receiver
@@ -129,10 +130,9 @@ class USDLiborSwaption(object):
         
         if bermudan:
             schedPeriod = ql.Period(callFrequency)
-            lastCallDate = self.calendar.advance(self.swap.maturityDate(), 
-                                                 -1,
-                                                 callFrequency) 
-            
+            lastCallDate = Tenor(schedPeriod).advance(self.swap.maturityDate(),
+                                                      Reverse=True)
+                                                      
             bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
                                       schedPeriod, 
                                       self.calendar,
@@ -141,7 +141,7 @@ class USDLiborSwaption(object):
                                       ql.Forward, 
                                       False)
 
-            self.exercise = ql.BermudanExercise(bdatesSched)
+            self.exercise = ql.bermudanExercise(bdatesSched)
         else:
             self.exercise = ql.EuropeanExercise(firstCallDate)
         
@@ -150,6 +150,7 @@ class USDLiborSwaption(object):
     def value(self, vol, termstructure_=None, model=ql.BlackKarasinski):
         '''
         Requires volatility input
+        
         '''
         if termstructure_:
             engine = termstructure_.swaptionEngine(vol, model=model)
