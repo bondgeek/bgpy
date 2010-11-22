@@ -111,12 +111,13 @@ class USDLiborSwaption(object):
     Vanilla Libor Swaption
     '''
     calendar = ql.TARGET()
+    fixedLegAdjustment = USDLiborSwap.fixedLegAdjustment
     
     def __init__(self, termstructure, firstCallDate, termDate, fixedRate, 
                 PayFlag=1, spread=0.0, 
                 notionalAmount=100.0,
                 bermudan = False,
-                callFrequency=ql.Semiannual
+                callFrequency=ql.Annual
                 ):
         self.termstructure = termstructure
         self.spread = spread
@@ -127,17 +128,20 @@ class USDLiborSwaption(object):
                             notionalAmount).swap
         
         if bermudan:
-            lastCallDate = self.swap.swap.fixedSched.date(self.swap.fixedSched.size()-2)
             schedPeriod = ql.Period(callFrequency)
+            lastCallDate = self.calendar.advance(self.swap.maturityDate(), 
+                                                 -1,
+                                                 callFrequency) 
             
             bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
                                       schedPeriod, 
                                       self.calendar,
-                                      swap.fixedLegAdjustment, 
-                                      swap.fixedLegAdjustment,
-                                      ql.Forward, False)
+                                      self.fixedLegAdjustment, 
+                                      self.fixedLegAdjustment,
+                                      ql.Forward, 
+                                      False)
 
-            self.exercise = ql.BermudanExercise(bdatesSched.dates())
+            self.exercise = ql.BermudanExercise(bdatesSched)
         else:
             self.exercise = ql.EuropeanExercise(firstCallDate)
         

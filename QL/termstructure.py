@@ -170,7 +170,27 @@ class TermStructureModel(object):
                                                 x, timeunit)
         return dict([(n, discount(advance(n))) for n in range(num+1)])
     
+    def scenarios(self, shock=0.0001, spreadType="Z"):
+        self._shift_up = SpreadedCurve(self, -shock, spreadType)
+        self._shift_dn = SpreadedCurve(self, shock, spreadType)
+        return True
+    
+    @property
+    def shift_up(self):
+        if not hasattr(self, "_shift_up"):
+            self.scenarios()
+        return self._shift_up
+
+    @property
+    def shift_dn(self):
+        if not hasattr(self, "_shift_dn"):
+            self.scenarios()
+        return self._shift_up
+          
     def update(*args):
+        '''
+        Must be over-loaded in sub-classes.
+        '''
         pass
   
 class SimpleCurve(TermStructureModel):
