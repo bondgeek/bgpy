@@ -171,7 +171,7 @@ class TermStructureModel(object):
         return dict([(n, discount(advance(n))) for n in range(num+1)])
     
     def scenarios(self, shock=0.0001, spreadType="Z"):
-        self._shift_up = SpreadedCurve(self, -shock, spreadType)
+        self._shift_up = SpreadedCurve(self, -1.*shock, spreadType)
         self._shift_dn = SpreadedCurve(self, shock, spreadType)
         return True
     
@@ -185,7 +185,7 @@ class TermStructureModel(object):
     def shift_dn(self):
         if not hasattr(self, "_shift_dn"):
             self.scenarios()
-        return self._shift_up
+        return self._shift_dn
           
     def update(*args):
         '''
@@ -334,11 +334,11 @@ class SpreadedCurve(TermStructureModel):
         "Z" = ZeroSpreadedTermStructure
         
     '''
-    spreadedTermStructure_ = {"F": ql.ForwardSpreadedTermStructure,
-                              "Z": ql.ZeroSpreadedTermStructure }
-              
+
     def __init__(self, termstructure, spread=0.0, type="Z"):
-    
+        self.spreadedTermStructure_ = {"F": ql.ForwardSpreadedTermStructure,
+                                       "Z": ql.ZeroSpreadedTermStructure }
+                      
         TermStructureModel.__init__(self, termstructure.datadivisor, 
                                           termstructure.settledays, 
                                           termstructure.label)

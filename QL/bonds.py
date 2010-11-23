@@ -255,12 +255,20 @@ class SimpleBond(SimpleBondType):
             calcattr = 'price'
         
         result_value = to_other(level, ytmfunc, cmplevel)
+        
         if dict_out:
             val, todate, toprice = result_value
+            if not bondyield:
+                bondyield = val
+            else:
+                price = val
+                
             result = {'bondyield': bondyield, 
                       'price': price, 
                       'toDate': todate,
-                      'toPrice': toprice}
+                      'toPrice': toprice,
+                      'dv01': self.dv01(bondyield),
+                      'dv01YTM': self.dv01YTM(bondyield)}
             result[calcattr] = val
         else:
             result = result_value[0]
@@ -336,7 +344,23 @@ class SimpleBond(SimpleBondType):
                 raise
                 
         return yld
+    
+    def dv01(self, bondyield):
+        ydelta = 0.0001
+        p0 = self.toPrice(bondyield-ydelta)
+        p1 = self.toPrice(bondyield+ydelta)
         
+        return (p0 - p1) / 2.0
+    
+    
+    def dv01YTM(self, bondyield):
+        ytm = self.toYTM(self.toPrice(bondyield))
+        ydelta = 0.0001
+        p0 = self.ytmToPrice(ytm-ydelta)
+        p1 = self.ytmToPrice(ytm+ydelta)
+        
+        return (p0 - p1) / 2.0
+    
     def assetSwap(self, termstructure=None, spread_=0.0, ratio=1.0):
         '''
         links an asset swap object.
