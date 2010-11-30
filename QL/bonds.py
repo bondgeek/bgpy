@@ -10,7 +10,7 @@ from math import floor, fmod
 import bgpy.__QuantLib as ql
 
 from bgpy.QL import toDate
-from bgpy.math.solvers import Secant, SolverExceptions
+from bgpy.math import Secant, SolverExceptions
 from bgpy.QL.assetswap import AssetSwap
 
 #globals

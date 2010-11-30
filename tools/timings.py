@@ -5,9 +5,11 @@ Python Patterns -- An Optimization Anecdote
 http://www.python.org/doc/essays/list2str.html
 '''
 
-__all__ = ['timing', 'timing2', 'fcompare', 'fcompare2', 'code_timer']
+__all__ = ['timing', 'fcompare', 'code_timer', 'timer']
 
 import time
+import time  
+
 
 # Guido's timing function
 def timing(f, n, a):
@@ -20,22 +22,6 @@ def timing(f, n, a):
     t2 = time.clock()
     print(round(t2-t1, 3))
     return  (f.__name__, round(t2-t1, 3))
-
-def timing2(f, n, a):
-    r = range(n)
-    t1 = time.clock()
-    for i in r:
-        f(*a); f(*a); f(*a); f(*a); f(*a); f(*a); f(*a); f(*a); f(*a); f(*a)
-    t2 = time.clock()
-    return  (f.__name__, round(t2-t1, 3))
-    
-def fcompare2(f1, f2, n, a):
-    '''fcompare2(f1, f2, n, a) -> comparison'''
-    timef1 = timing(f1,n,a)
-    timef2 = timing(f2,n,a)
-    print("%s:  %s secs"%timef1)
-    print("%s:  %s secs"%timef2)
-    print("%s vs %s %.3f%%" % (timef2[0], timef1[0], timef2[1]/timef1[1]))
 
 def fcompare(flist, n , arg):
     '''
@@ -67,6 +53,21 @@ def code_timer(code1, code2, n):
     diagnostic = "code1: %.3f, code2: %.3f" %(elapsed1, elapsed2)
 
     return diagnostic
+
+
+class timer(object):
+    '''Returns how much time has elapsed since the previous call'''
+    def __init__(self):
+        self.initialtime = time.clock()
+        self.prevtime = self.initialtime
+    
+    def lap(self):
+        '''Returns how time has elapsed since the previous call'''
+        tnow = time.clock()
+        d = round(tnow - self.prevtime, 3)
+        self.prevtime = tnow
+        return d
+
 
 if __name__ == "__main__":
     import random

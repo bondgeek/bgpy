@@ -105,6 +105,12 @@ class XLdb(object):
                     
                 self.qdata[dkey] = xrvalues
     
+    def get(self, key, default=None):
+        if self.qdata:
+            return self.qdata.get(key, default)
+        else:
+            return default
+            
     def __getitem__(self, key):
         if self.qdata:
             return self.qdata.get(key, None)
@@ -133,6 +139,18 @@ class XLdb(object):
         return xlValue(x, self.datemode, self.hash_comments)
 
 class XLOut(object):
+    '''
+    Creates a workbook object for writing.  Defines a dictionary of cell formats,
+    e.g. "date".
+    
+    >>> wkb = XLout(filename)
+    >>> wkb.write( cell_value, cell_row, cell_column, sheet_index)
+    >>> wkb.write( date_value, cell_row2, cell_column2, sheet_index, "date")
+    >>> wkb.save()
+    
+    
+    '''
+    
     datestyle = xlwt.XFStyle()
     datestyle.num_format_str='MM/DD/YYYY'
     defaultstyle = xlwt.XFStyle()
@@ -148,7 +166,7 @@ class XLOut(object):
             sheetname = sheets[n]
             self.sheet[n] = self.wkb.add_sheet(sheetname)
     
-    def write(self, value_, row_, col_, sheet=1, format=None):
+    def write(self, value_, row_, col_, sheet=0, format=None):
         style = self.styles.get(format, self.defaultstyle)
         
         ws = self.sheet[sheet]

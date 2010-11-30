@@ -5,7 +5,7 @@ Utilities for handling cusip check digits
 # https://www.cusip.com/static/html/webpage/pdf/CUSIPIntro_%207.26.2007.pdf
 # 
 
-__all__ = ['cusipcheckdigit', 'ischeckdigit', 'validate_cusip', 'qregex']
+__all__ = ['cusipcheckdigit', 'ischeckdigit', 'validate_cusip']
             
 import string
 import re

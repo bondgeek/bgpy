@@ -5,34 +5,10 @@ Created August 2010
 @author: bartmosley
 '''
 
-import time  #where is all the time spent?
-
-class timer(object):
-    '''Returns how much time has elapsed since the previous call'''
-    def __init__(self):
-        self.initialtime = time.clock()
-        self.prevtime = self.initialtime
-    
-    def lap(self):
-        '''Returns how time has elapsed since the previous call'''
-        tnow = time.clock()
-        d = round(tnow - self.prevtime, 3)
-        self.prevtime = tnow
-        return d
-
+import time  
 import re
 
-try:
-    import os
-    
-    def gohome():
-        os.chdir(os.environ.get("HOME"))
-        return os.getcwd()
-
-    def whereami():
-        print("%s" % os.getcwd())
-except:
-    print("module os not available")
+from bgpy import HOMEPATH
 
 def dirpub(obj):
     '''

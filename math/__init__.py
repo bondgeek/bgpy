@@ -1,3 +1,4 @@
-__all__ = ['solvers']
+__all__ = ['npinterp', 'interp', 'Secant', 'SolverExceptions']
 
-from solvers import npinterp, interp, Secant
+from interp import npinterp, interp
+from solvers import Secant, SolverExceptions

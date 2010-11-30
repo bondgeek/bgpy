@@ -8,7 +8,7 @@ import bgpy.__QuantLib as ql
 
 from bgpy.QL import toDate
 from bgpy.dpatterns import Struct
-from bgpy.math.solvers import Secant, SolverExceptions
+from bgpy.math import Secant, SolverExceptions
 from bgpy.QL.termstructure import SpreadedCurve
 from bgpy.QL.irswaps import USDLiborSwap, USDLiborSwaption, BasisSwap
 

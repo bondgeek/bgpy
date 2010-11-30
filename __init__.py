@@ -34,7 +34,9 @@ HOMEDRIVE = os.environ.get("HOMEDRIVE", None) # only for windows
 HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', None))
 HOMEPATH = os.path.join(HOMEDRIVE, HOMEPATH)
 
-DATADIR = os.environ.get('BGPY_DATADIR', HOMEPATH)
 PathJoin = os.path.join
 
 from bgpy.xldb import XLdb, XLOut
+
+from bgpy.cusips import cusipcheckdigit, ischeckdigit, validate_cusip
+            
