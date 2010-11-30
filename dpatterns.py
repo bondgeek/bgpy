@@ -25,19 +25,26 @@ which could see several calls--maybe Singleton is better.
 Created on Jul 10, 2009
 
 @author: bartmosley
+
 '''
 
 
 class Singleton(object):
-    '''There will only be one instance of this class, or any subclass'''
+    '''
+    There will only be one instance of this class, or any subclass
+    
+    '''
     def __new__(cls):
         if not '_instance' in cls.__dict__:
             cls._instance = object.__new__(cls)
         return cls._instance
 
 class Borg(object):
-    '''Each instance of Borg will have the same state(attributes and values),
-    aka MonoState'''
+    '''
+    Each instance of Borg will have the same state(attributes and values),
+    aka MonoState
+    
+    '''
     _shared_state = {}
     def __init__(self):
         self.__dict__ = self._shared_state
