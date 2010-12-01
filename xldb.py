@@ -49,10 +49,12 @@ class XLdb(object):
         self.filepath = filepath
         self.book = xlrd.open_workbook(filepath)
         self.datemode = self.book.datemode
+        
         if sheet_name:
             self.sh = self.book.sheet_by_name(sheet_name)
         else:
             self.sh = self.book.sheet_by_index(sheet_index)
+            
         self.ncolumns = self.sh.ncols
         self.nrows = self.sh.nrows
         self.hash_comments = hash_comments
@@ -73,15 +75,9 @@ class XLdb(object):
 
         self.refcolumn = []
         self.qdata = {}
-        if header:
-            startatrow = startrow + 1 
-        else: 
-            startatrow = startrow
         
-        if idx_column == 0:    
-            startloc = 1  
-        else:
-            startloc = 0
+        startatrow = startrow + 1 if header else startrow
+        startloc = 1 if idx_column == 0 else 0
             
         for xrow in range(startatrow, self.nrows):
             try:
@@ -91,12 +87,7 @@ class XLdb(object):
                 continue #skips a row if there's a problem
             else:
                 xrvalues = rowValues(xr, startloc)
-                
-                
-                if idx_column >= 0:    
-                    dkey = xr[idx_column] 
-                else: 
-                    dkey = xrow
+                dkey = xr[idx_column] if idx_column >= 0 else xrow
                 
                 # refcolumn is an ordered list of keys,
                 # preserving order in spreadsheet, unlike dict.__keys__
@@ -104,6 +95,8 @@ class XLdb(object):
                     self.refcolumn.append(dkey)
                     
                 self.qdata[dkey] = xrvalues
+        
+        self.book.unload_sheet(self.sh.name)
     
     def get(self, key, default=None):
         if self.qdata:
