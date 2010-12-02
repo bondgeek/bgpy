@@ -31,13 +31,18 @@ def cusipcheckdigit(cusip):
     '''
     Calculate and return check digit. 
     Assumes validated string--8 or 9 digits with uppercase alphas
+    
     '''
     digits = [(w*_cusip2value[ch]) for w,ch in zip(_cusipweights, cusip)]
     cs = sum([(x%10+x//10) for x in digits]) % 10
+    
     return str((10-cs)%10)
  
 def ischeckdigit(cusip):
-    '''True if string has nine digits with the ninth being the check digit'''
+    '''
+    True if string has nine digits with the ninth being the check digit
+    
+    '''
     if not isinstance(cusip, str):
         return False
     qsp = cusip.upper()
