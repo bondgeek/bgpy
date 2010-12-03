@@ -99,7 +99,8 @@ class AssetSwap(object):
         '''
         if (not solver) or not (self.oasCurve and self.baseswap):
             self.oasCurve = SpreadedCurve(termstructure, type="Z")
-            self.update(self.oasCurve, 0.0, ratio)
+        
+        self.update(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread
         prm = self.baseswap.value(self.oasCurve)
