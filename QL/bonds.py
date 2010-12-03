@@ -134,7 +134,8 @@ class SimpleBond(SimpleBondType):
         
         self.nper = floor(self.term)
         self.frac = self.term - self.nper
-
+        self.term /= freq
+        
         return self
    
     def getSettlement(self):
