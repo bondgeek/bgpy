@@ -56,8 +56,9 @@ class Tenor(object):
         '''
         return int(self.term * ql.freqValue(frequency))
     
-    def advance(self, date_, convention=ql.Unadjusted, calendar=ql.TARGET(), Reverse=False):
-        length_ = self.length if not Reverse else -self.length
+    def advance(self, date_, convention=ql.Unadjusted, calendar=ql.TARGET(), reverse=False):
+        date_ = toDate(date_)
+        length_ = self.length if not reverse else -self.length
         return calendar.advance(date_, length_, self.timeunit, convention)
     
     def schedule(self, settle_, maturity_, convention=ql.Unadjusted,
@@ -82,7 +83,7 @@ class Tenor(object):
         dt = maturity_
         while dt.serialNumber() > settle_.serialNumber():
             sched.append(calendar.adjust(dt, convention))
-            dt = self.advance(dt, Reverse=True)
+            dt = self.advance(dt, reverse=True)
         else:
             sched.append(settle_)
             

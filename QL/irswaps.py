@@ -131,7 +131,7 @@ class USDLiborSwaption(object):
         if bermudan:
             schedPeriod = ql.Period(callFrequency)
             lastCallDate = Tenor(schedPeriod).advance(self.swap.maturityDate(),
-                                                      Reverse=True)
+                                                      reverse=True)
                                                       
             bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
                                       schedPeriod, 

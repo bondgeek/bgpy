@@ -7,7 +7,7 @@ import os
 import xlrd
 import xlwt
 
-from datetime import date
+from datetime import date, timedelta
 
 def xl_to_date(xdate, _datemode = 1):
     yyyy, mm, dd, h, m, s =xlrd.xldate_as_tuple(xdate.value, _datemode)
@@ -155,16 +155,46 @@ class XLOut(object):
         self.wkb = xlwt.Workbook()                
 
         self.sheet = {}
+        self.sheets = sheets
         for n in range(len(sheets)):
             sheetname = sheets[n]
             self.sheet[n] = self.wkb.add_sheet(sheetname)
     
+    def select_sheet(self, sheet=0):
+        "return object for sheet"
+        
+        ws = None
+        if type(sheet) == str:
+            for n in self.sheet:
+                ws = self.sheet[n]
+                if ws.name.encode() == sheet:
+                    break
+        else:
+            ws = self.sheet[sheet] 
+        
+        return ws
+               
     def write(self, value_, row_, col_, sheet=0, format=None):
+        if type(value_) == timedelta:
+            #timedelta does not play nicely with xlwt
+            value_ = str(value_)
+            
         style = self.styles.get(format, self.defaultstyle)
         
-        ws = self.sheet[sheet]
+        ws = self.select_sheet(sheet)
+        
         ws.write(row_, col_, value_, style)
     
    
+    def freezepanes(self, row_, col_, sheet=0):
+        ws = self.select_sheet(sheet)
+        
+        ws.set_panes_frozen(True)
+        ws.set_remove_splits(True)
+        
+        ws.set_horz_split_pos(row_+1)
+        ws.set_vert_split_pos(col_+1)
+        
+        
     def save(self):
         self.wkb.save(self.filename)
