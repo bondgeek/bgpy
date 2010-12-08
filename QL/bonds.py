@@ -319,7 +319,9 @@ class SimpleBond(SimpleBondType):
         Calculate yield to maturity from price.
         Secant search is sufficient as price is generally well-behaved,
         and coupon, current yield are natural initial values.
+        
         '''
+        
         if not redemption:
             redemption = self.redvalue
             
