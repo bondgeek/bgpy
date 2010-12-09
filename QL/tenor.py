@@ -44,6 +44,23 @@ class Tenor(object):
         self.unit = unit
         self.timeunit = self._tenorUnits.get(self.unit, ql.Days)
     
+    @classmethod 
+    def fromdates(cls, settle, maturity, daycount=ql.ActualActual()):
+        '''
+        Returns the tenor associated with settlement and maturity.
+        
+        '''
+        settle = toDate(settle)
+        maturity = toDate(maturity)
+        years_ = daycount.yearFraction(settle, maturity)
+        
+        if years_ >= 1.0:
+            t = "".join((str(int(round(years_))),"Y"))
+        else:
+            t = "".join((str(int(round(years_*12.))),"M"))
+        
+        return cls(t)
+    
     def __str__(self):
         return str(self.length)+self.unit
     

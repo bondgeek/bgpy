@@ -59,7 +59,8 @@ class XLdb(object):
         self.nrows = self.sh.nrows
         self.hash_comments = hash_comments
         
-        cleanrow_ = lambda row_: [x for x in row_ if x is not '']
+        cleanrow_ = lambda row_: [x if x is not '' else None for x in row_]
+        
         def getvalue(h_):
             if hasattr(h_.value, "encode"):
                 return h_.value.encode()
