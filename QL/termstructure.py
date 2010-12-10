@@ -117,6 +117,8 @@ class TermStructureModel(object):
         '''
         Returns par rate for given maturity
         '''
+        matDate = toDate(matDate)
+        
         discount = self.curve.discount              #function calls
         advance = ql.TARGET().advance               #function calls
         settle = self.curve.referenceDate()
@@ -186,7 +188,21 @@ class TermStructureModel(object):
         if not hasattr(self, "_shift_dn"):
             self.scenarios()
         return self._shift_dn
-          
+
+    def parsensitivity(self, term):
+        '''What is the par shift for a 1bp z-shift for a given term?
+        Takes either tenor, e.g. '10Y', or maturity date
+        '''
+        if type(term) == str:  # must be a tenor
+            func = "tenorpar"
+        else:
+            func = "bondpar"
+        
+        v_dn = getattr(self.shift_dn, func)(term)
+        v_up = getattr(self.shift_up, func)(term)
+        
+        return 10000.*(v_dn - v_up) / 2.
+            
     def update(*args):
         '''
         Must be over-loaded in sub-classes.

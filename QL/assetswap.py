@@ -66,6 +66,7 @@ class AssetSwap(object):
         Creates the swaps used to model bond as an asset swap.
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
+        
         '''     
         assetSwapSettle = termstructure.referenceDate()
         self.assetSwapCoupon = self.coupon / ratio   
@@ -97,13 +98,15 @@ class AssetSwap(object):
         '''
         OAS given spread
         '''
-        if (not solver) or not (self.oasCurve and self.baseswap):
+        if (not solver) or not getattr(self, "oasCurve", None):
             self.oasCurve = SpreadedCurve(termstructure, type="Z")
         
         self.update(self.oasCurve, 0.0, ratio)
         
         self.oasCurve.spread = spread
+        
         prm = self.baseswap.value(self.oasCurve)
+        
         if self.swaption:
             self.callvalue = self.swaption.value(vol, self.oasCurve, model=model)
             prm += self.callvalue
@@ -119,12 +122,13 @@ class AssetSwap(object):
                        vol=1e-7, model=ql.BlackKarasinski, solver=False):
         '''
         Calculate asset swap premium, given spread and termstructure.
-        Assumes termstructure object is derivative of TermStructureModel class,
+        Assumes termstructure object is derived from TermStructureModel class,
         or QuantLib YieldTermStructureHandle.
         '''
         self.update(termstructure, spread_, ratio_)
         
         prm = self.baseswap.value(termstructure) * ratio_
+        
         if self.swaption:
             self.callvalue = self.swaption.value(vol, 
                                                  termstructure, 
@@ -229,8 +233,14 @@ class AssetSwap(object):
         self.oasCurve = None
         return retval
         
-    def sensitivity(self, termstructure, spread, ratio, vol, 
-                    model, valueFunc):
+    def base_dv01(self, termstructure, spread, ratio, vol, 
+                    model, valueFunc=None):
+        '''Z DV01
+        Price sensitivity to bp change in discount rates across the term structure.
+        '''
+        if not valueFunc:
+            valueFunc = self.aswValue
+            
         crv_up = termstructure.shift_up
         crv_dn = termstructure.shift_dn
         
@@ -238,6 +248,37 @@ class AssetSwap(object):
         p1 = valueFunc(crv_dn, spread, ratio, vol, model)
         
         return (p0-p1) / 2.0
+
+    def spread_dv01(self, termstructure, spread, ratio, vol, 
+                    model, valueFunc=None):
+        if not valueFunc:
+            valueFunc = self.aswValue
+            
+        p0 = valueFunc(termstructure, spread-0.0001, ratio, vol, model)
+        p1 = valueFunc(termstructure, spread+0.0001, ratio, vol, model)
+        
+        return (p0-p1) / 2.0
+        
+    def dvRatio(self, termstructure, spread, ratio, vol, 
+                    model, valueFunc=None):
+        if not valueFunc:
+            valueFunc = self.aswValue
+            
+        p0 = valueFunc(termstructure, spread, ratio-.01, vol, model)
+        p1 = valueFunc(termstructure, spread, ratio+.01, vol, model)
+        
+        return (p0-p1) / 2.0
+
+    def vega(self, termstructure, spread, ratio, vol, 
+                    model, valueFunc=None):
+        if not valueFunc:
+            valueFunc = self.aswValue
+            
+        p0 = valueFunc(termstructure, spread, ratio, vol-.01, model)
+        p1 = valueFunc(termstructure, spread, ratio, vol+.01, model)
+        
+        return (p0-p1) / 2.0
+
         
     def value(self, termstructure,
                     spread = 0.0,
@@ -253,8 +294,8 @@ class AssetSwap(object):
         
         value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
         
-        dv01 = self.sensitivity(termstructure, spread, ratio, vol, 
-                                model, valueFunc) if calcDV01 else None
+        dv01 = self.base_dv01(termstructure, spread, ratio, vol, 
+                              model, valueFunc) if calcDV01 else None
                                       
         dvalues = self.calc(bondprice=value_, dict_out=True)
         
