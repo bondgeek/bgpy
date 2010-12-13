@@ -110,6 +110,7 @@ class USDLiborSwap(object):
 class USDLiborSwaption(object):
     '''
     Vanilla Libor Swaption
+    
     '''
     calendar = ql.TARGET()
     fixedLegAdjustment = USDLiborSwap.fixedLegAdjustment
@@ -118,30 +119,34 @@ class USDLiborSwaption(object):
                 PayFlag=1, spread=0.0, 
                 notionalAmount=100.0,
                 bermudan = False,
-                callFrequency=ql.Annual
+                callFrequency=ql.Annual  # TODO: Semiannual
                 ):
         self.termstructure = termstructure
         self.spread = spread
         firstCallDate, termDate = map(toDate, [firstCallDate, termDate])
+        
         self.swap = USDLiborSwap(self.termstructure, firstCallDate, termDate, 
                             fixedRate, 
                             PayFlag, self.spread, 
                             notionalAmount).swap
         
+        bermSchedule = None
         if bermudan:
             schedPeriod = ql.Period(callFrequency)
             lastCallDate = Tenor(schedPeriod).advance(self.swap.maturityDate(),
                                                       reverse=True)
-                                                      
-            bdatesSched = ql.Schedule(firstCallDate, lastCallDate,  
-                                      schedPeriod, 
-                                      self.calendar,
-                                      self.fixedLegAdjustment, 
-                                      self.fixedLegAdjustment,
-                                      ql.Forward, 
-                                      False)
+            
+            if ql.Thirty360().dayCount(firstCallDate, lastCallDate) > 0:
+                bermSchedule = ql.Schedule(firstCallDate, lastCallDate,  
+                                           schedPeriod, 
+                                           self.calendar,
+                                           self.fixedLegAdjustment, 
+                                           self.fixedLegAdjustment,
+                                           ql.Forward, 
+                                           False)
 
-            self.exercise = ql.bermudanExercise(bdatesSched)
+        if bermSchedule:
+            self.exercise = ql.bermudanExercise(bermSchedule)
         else:
             self.exercise = ql.EuropeanExercise(firstCallDate)
         

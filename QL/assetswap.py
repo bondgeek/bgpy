@@ -82,14 +82,17 @@ class AssetSwap(object):
         self.swaption = None
         if self.calllist:
             firstcall, callprice, callbond = self.calllist[0]
-            self.swaption = USDLiborSwaption(termstructure, 
-                                             firstcall, 
-                                             self.maturity, 
-                                             self.assetSwapCoupon, 
-                                             PayFlag=0, 
-                                             spread=spread_,
-                                             bermudan=True,
-                                             notionalAmount = 100.0)
+            
+            # assuming 30days call notice as a minimum
+            if ql.Thirty360().dayCount(firstcall, self.maturity) >= 30:
+                self.swaption = USDLiborSwaption(termstructure, 
+                                                 firstcall, 
+                                                 self.maturity, 
+                                                 self.assetSwapCoupon, 
+                                                 PayFlag=0, 
+                                                 spread=spread_,
+                                                 bermudan=True,
+                                                 notionalAmount = 100.0)
         
         return (self.baseswap, self.swaption)
         
@@ -97,7 +100,9 @@ class AssetSwap(object):
                        model=ql.BlackKarasinski, solver=False):
         '''
         OAS given spread
+        
         '''
+        
         if (not solver) or not getattr(self, "oasCurve", None):
             self.oasCurve = SpreadedCurve(termstructure, type="Z")
         

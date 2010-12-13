@@ -286,7 +286,11 @@ class SimpleBond(SimpleBondType):
         """calculates price given yield"""    
         if(yld < 0.0):
             print BondException.NEG_YIELD_MSG
+            print("settle: %s coupon: %s maturity: %s" % (self.settlementDate, 
+                                                          self.coupon, 
+                                                          self.maturity))
             # yld = BondException.MIN_YLD
+            
         if not redemption:
             redemption = self.redvalue
             
