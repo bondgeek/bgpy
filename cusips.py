@@ -33,7 +33,7 @@ def cusipcheckdigit(cusip):
     Assumes validated string--8 or 9 digits with alphas
     
     '''
-    cusip = cusip.upper
+    cusip = cusip.upper()
     digits = [(w*_cusip2value[ch]) for w,ch in zip(_cusipweights, cusip)]
     cs = sum([(x%10+x//10) for x in digits]) % 10
     

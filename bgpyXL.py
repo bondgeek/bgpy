@@ -1,58 +1,51 @@
 '''
 bgpyXL.py
 
-Wraps bgpy functions for use in PyXLL.
-
-pyxll.cfg should look like this:
-
-[PYXLL]
-pythonpath = <other additional paths, e.g. .;.\examples;> C:\Users\Public\Libraries\Python\bgpy
-modules = <worksheetfuncs>, bgpyXL
-
+Wraps bgpy functions for use in pyinex
 
 '''
+# not necessary, but here for documentation
+# import pyinex
 
-from pyxll import xl_func
 
-from bgpy.xl.xl_markets import curve, tenorpar
+from bgpy.xl.xl_markets import curve, tenorpar, listTermStructures, xlDate
 
-from bgpy.cusips import cusipcheckdigit
-from bgpy.QL import Date as qDate
+from bgpy.cusips import cusipcheckdigit, validate_cusip
+
+from bgpy.QL import Date as _qDate
 from bgpy.QL import toDate, Settings
+from datetime import date
 
-gToday = None
+_qToday = None
+        
+def HasVarArgs(*args):
 
-@xl_func("string cusip: string")
-def qspcheck(cusip):
-    """cusip check digit"""
-    return cusipcheckdigit(cusip)
-
-    from pyxll import xl_func
-
-@xl_func(":string", category="bgpy")
+    r2 = str(len(args)) + ' varargs'
+    r3 = 'Varargs: ' + ','.join([str(x) for x in args]) + ')'
+    
+    return r3
+    
 def qToday():
     """returns today's date in ISO format"""
     
-    return qDate.todaysDate().ISO()
+    return _qDate.todaysDate().ISO()
 
-@xl_func("xl_cell cell:string", category="bgpy")
 def setEvaluationDate(cell):
-    """set global value for gToday"""
-    global gToday
+    """set global value for _qToday"""
+    global _qToday
     
-    gToday = toDate(cell.value)
+    _qToday = toDate(cell.value)
     if not to_date:
-        gToday = Settings.instance().getEvaluationDate()
+        _qToday = Settings.instance().getEvaluationDate()
     else:
-        Settings.instance().setEvaluationDate(gToday)
+        Settings.instance().setEvaluationDate(_qToday)
     
-    return gToday.ISO()
+    return _qToday.ISO()
     
-@xl_func(":string")
-def getToday():
+def setEvaluationDate():
     """get QuantLib today"""
     
-    if hasattr(gToday, "ISO"):
-        return gToday.ISO()
+    if hasattr(_qToday, "ISO"):
+        return _qToday.ISO()
     else:
         return None
