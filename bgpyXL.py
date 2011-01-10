@@ -4,10 +4,6 @@ bgpyXL.py
 Wraps bgpy functions for use in pyinex
 
 '''
-# not necessary, but here for documentation
-# import pyinex
-
-
 from bgpy.xl.xl_markets import curve, tenorpar, listTermStructures, xlDate
 
 from bgpy.cusips import cusipcheckdigit, validate_cusip
@@ -17,14 +13,7 @@ from bgpy.QL import toDate, Settings
 from datetime import date
 
 _qToday = None
-        
-def HasVarArgs(*args):
-
-    r2 = str(len(args)) + ' varargs'
-    r3 = 'Varargs: ' + ','.join([str(x) for x in args]) + ')'
-    
-    return r3
-    
+            
 def qToday():
     """returns today's date in ISO format"""
     
@@ -49,3 +38,14 @@ def setEvaluationDate():
         return _qToday.ISO()
     else:
         return None
+
+def isColumn(xrange):
+    flag = True
+    for x in xrange:
+        flag *= hasattr(x, "__iter__")
+    return flag
+
+def rowIfColumn(xrange):
+    if isColumn(xrange):
+        return [x[0] for x in xrange]
+    return xrange

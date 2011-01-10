@@ -6,14 +6,14 @@ xl_markets.py
 from bgpy.cusips import validate_cusip
 
 from datetime import date
-from bgpy.QL import SimpleCurve, SimpleBond, toDate
+from bgpy.QL import SimpleCurve, SimpleBond, toDate, Call
 
 # global dictionary to 
 _TermStructures = {}
 _Portfolio = {}
 
 def xlDate(xdate):
-    """Convert xl Date to ISO string"""
+    """Convert xl Date to python date"""
     # QuantLib doesn't support dates prior to 1901
     # which saves us from dealing with the leap year problem
     if xdate < 367:
@@ -31,7 +31,6 @@ def xlDateISO(xdate):
     
     # python dates are from year zero, excel from 1900
     return date.fromordinal(693594 + int(xdate)).isoformat()
-
 
 def listTermStructures():
     return ": ".join([str(id) for id in _TermStructures])
@@ -84,10 +83,16 @@ def tenorpar(id, tenor):
     
     return -1
     
-def addPortfolioBond(cusip, coupon, maturity):
+def addPortfolioBond(cusip, coupon, maturity, callable, firstCall, callPrice, parCall):
     
     global _Portfolio
 
+    callfeature = None
+    if callable.upper() == "Y":
+        callfeature = Call(toDate(xlDate(firstCall)),
+                           callPrice,
+                           toDate(xlDate(parCall)))
+        
     _Portfolio[cusip] = SimpleBond(coupon, toDate(xlDate(maturity)))
     
     return cusip
@@ -131,5 +136,3 @@ def oasCalc(cusip, curve, price, vol, attr):
     sprx = asw.solveSpread(termstr, price, vol)
 
     return sprx.get(attr, None)
-
-

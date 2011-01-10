@@ -47,7 +47,7 @@ class XLdb(object):
                  idx_column=0, hash_comments=1):
 
         self.filepath = filepath
-        self.book = xlrd.open_workbook(filepath)
+        self.book = xlrd.open_workbook(filepath, on_demand=True)
         self.datemode = self.book.datemode
         
         if sheet_name:

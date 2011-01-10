@@ -5,30 +5,36 @@ IronPython
 Not meant to be used directly, though it could be.  Best use is via
 bgpy.QL
 
-Assumes QuantLib bindings for Python and IronPython are in different directories, 
-neither of which is on the PATH or PYTHONPATH.
+Assumes QuantLib bindings for Python and IronPython are in different
+directories, neither of which is on the PATH or PYTHONPATH.
 
 '''
 import sys
+import os
 
 # set environment configuration for QuantLib
 try:
     import clr
-    QL_LIB = 'C:\\Program Files\\Resolver One\\site-packages\\Quantlib\\lib'
+    QL_LIB = os.environ.get('IPYONLY',
+             'C:\\Users\\Public\\Libraries\\Python\\IPY\\Quantlib\\lib')
+    
     if QL_LIB not in sys.path:
         sys.path.append(QL_LIB)
     clr.AddReference('NQuantLib')
-    CONFIG_NAME = 'IPY'
-    
+    CONFIG_NAME = 'IPY'        
+    from QuantLib import *
+        
 except:
-    QL_LIB = 'C:\\Users\\Public\\Library\\Python'
+    QL_LIB = os.environ.get('PYONLY',
+             'C:\\Users\\Public\\Libraries\\Python\\NOIPY')
+
     if QL_LIB not in sys.path:
         sys.path.append(QL_LIB)
     
     CONFIG_NAME = 'PY'
+    from QuantLib import *
 
-    
-from QuantLib import *
+
 
 
 def freqValue(freq_):
