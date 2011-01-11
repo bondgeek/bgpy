@@ -26,12 +26,14 @@ def interp(xyTuples, x, leftValue=None, rightValue=None):
     x0, y0 = xyTuples[ max(xy0) ] if xy0 else leftValue
     x1, y1 = xyTuples[ min(xy1) ] if xy1 else rightValue
 
-    if abs(x1 - x0) < 1e-12:    
+    if abs(x1 - x0) < 1e-12:   
         if x < x0:
             x1, y1 = xyTuples[1]
+        elif x > x1:
+            x0, y0 = xyTuples[-2]
         else:
-            x1, y1 = xyTuples[-2]
-            
+            return (y1 + y0)/2.0
+        
     m = (float(x) - float(x0))/(float(x1) - float(x0))
         
     return m * y1 + (1.0 - m) * y0

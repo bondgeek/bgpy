@@ -61,6 +61,8 @@ def dirshow(obj, showdocs = True, return_dict=False):
 
 def f_reload(obj):
     '''
+    Used for functions imported in 'from xyz import foo' format.
+    
     Reloads module for passed in object, if the object has a __module__ attr.
     Deletes the previous instance of the object.
     '''
