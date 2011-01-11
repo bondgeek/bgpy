@@ -146,6 +146,8 @@ class USDLiborSwaption(object):
                                            False)
 
         if bermSchedule:
+            # bermudanExercise is defined in _QuantLib.py
+            # to allow interoperability between CPython and IronPython versions of QL
             self.exercise = ql.bermudanExercise(bermSchedule)
         else:
             self.exercise = ql.EuropeanExercise(firstCallDate)

@@ -108,4 +108,10 @@ else:
     vars().update(_aliasReferences(DateGeneration, vars()))
         
     def bermudanExercise(sched_):
-        return BermudanExercise( sched_ )
+        '''changed in QuantLib v1.0.0'''
+        #
+        #    return BermudanExercise( sched_ )
+        dates = DateVector([dt for dt in sched_])
+        
+        return BermudanExercise(dates)
+        
