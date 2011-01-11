@@ -16,11 +16,14 @@ import os
 try:
     import clr
     QL_LIB = os.environ.get('IPYONLY',
-             'C:\\Users\\Public\\Libraries\\Python\\IPY\\Quantlib\\lib')
+             'C:\\Users\\Public\\Libraries\\Python\\IPY')
+    QL_LIB = os.path.join(QL_LIB, "Quantlib", "lib")
     
     if QL_LIB not in sys.path:
         sys.path.append(QL_LIB)
+    
     clr.AddReference('NQuantLib')
+    
     CONFIG_NAME = 'IPY'        
     from QuantLib import *
         
