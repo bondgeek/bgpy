@@ -1,8 +1,8 @@
 '''
 xl_markets.py
 
-'''
 
+'''
 from bgpy.cusips import validate_cusip
 
 from datetime import date
@@ -69,8 +69,7 @@ def curve(tenors, curve, id, curvedate):
 def bondpar(id, maturity):
     """bond par"""
 
-    mty = toDate(xlDate(maturity))
-    
+    mty = toDate(xlDate(maturity))    
     if id in _TermStructures:
         return _TermStructures[id].bondpar(mty)
     
@@ -128,7 +127,6 @@ def oasCalc(cusip, curve, price, vol, attr):
 
     bond = _Portfolio.get(cusip, None)
     termstr = _TermStructures.get(curve, None)
-    
     if not bond:
         return "Bond Not Found"
     if not termstr:
