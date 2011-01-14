@@ -6,7 +6,8 @@ Not meant to be used directly, though it could be.  Best use is via
 bgpy.QL
 
 Assumes QuantLib bindings for Python and IronPython are in different
-directories, neither of which is on the PATH or PYTHONPATH.
+directories, neither of which is on the PATH or PYTHONPATH, defined by the 
+environment variables PYONLY and IPYONLY.
 
 '''
 import sys

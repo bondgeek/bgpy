@@ -3,8 +3,7 @@ bgpy
 This is a python package.  It should work seamlessly with both standard CPython 
 and IronPython.
 
-
-System setup: 
+System setup and dependencies: 
 -  create an environment variable BGPY_DATADIR pointing to the directory 
    where bgpy will find data files (spreadsheets, flat files, sqlite  
    databases--not MySQL databases)
@@ -14,7 +13,9 @@ System setup:
    on Windows/IronPython make sure these are not installed as eggs (i.e.,
    don't use easy_install, install from source or use the Windows installer in 
    the Cheese Shop.)
-   
+-  QuantLib should be installed for IronPython and Python (C# and C++ bindings 
+   respectively) in directories that are not on PATH or PYTHONPATH and defined
+   in environment variables PYONLY and IPYONLY.
    
 LICENSE
 bgpy is available under an MIT License and incorporates QuantLib which is 

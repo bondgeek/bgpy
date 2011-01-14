@@ -3,6 +3,8 @@ xl_markets.py
 
 '''
 
+from bgpy.bgpyXL import isColumn, rowIfColumn, xlDate, xlDateISO
+
 from bgpy.cusips import validate_cusip
 
 from datetime import date
@@ -12,39 +14,24 @@ from bgpy.QL import SimpleCurve, SimpleBond, toDate, Call
 _TermStructures = {}
 _Portfolio = {}
 
-def xlDate(xdate):
-    """Convert xl Date to python date"""
-    # QuantLib doesn't support dates prior to 1901
-    # which saves us from dealing with the leap year problem
-    if xdate < 367:
-        return "#Date prior to 1901-01-01"
-    
-    # python dates are from year zero, excel from 1900
-    return date.fromordinal(693594 + int(xdate))
+class Portfolio(object):
+    def __init__(self):
+        global _Portfolio
+        global _TermStructures
+        
+        self.portfolio = _Portfolio
+        self.termstructures = _TermStructures
 
-def xlDateISO(xdate):
-    """Convert xl Date to ISO string"""
-    # QuantLib doesn't support dates prior to 1901
-    # which saves us from dealing with the leap year problem
-    if xdate < 367:
-        return "#Date prior to 1901-01-01"
+    def addTermStructure(self, key, termstr):
+
+        self.termstructures[key] = termstr
+
+    def getTermStructure(self, key):
+        return self.termstructures.get(key, None)
     
-    # python dates are from year zero, excel from 1900
-    return date.fromordinal(693594 + int(xdate)).isoformat()
 
 def listTermStructures():
     return ": ".join([str(id) for id in _TermStructures])
-
-def isColumn(xrange):
-    flag = True
-    for x in xrange:
-        flag *= hasattr(x, "__iter__")
-    return flag
-
-def rowIfColumn(xrange):
-    if isColumn(xrange):
-        return [x[0] for x in xrange]
-    return xrange
 
 def curve(tenors, curve, id, curvedate):
     """Assign yield curve values. """
@@ -83,8 +70,15 @@ def tenorpar(id, tenor):
         return _TermStructures[id].tenorpar(tenor)
     
     return -1
+
+def addTermStructure(key, termstr):
+    global _TermStructures
+
+    _TermStructures[key] = termstr
+    return key
     
-def addPortfolioBond(cusip, coupon, maturity, callable, firstCall, callPrice, parCall):
+def addPortfolioBond(cusip, coupon, maturity, callable, firstCall,
+                     callPrice, parCall):
     
     global _Portfolio
 
@@ -123,6 +117,18 @@ def toPrice(cusip, bondyield):
 def toYield(cusip, bondprice):
     return bondCalc(cusip, "P", bondprice)
 
+def bondVol(cusip, volcurve):
+    
+    bond = _Portfolio.get(cusip, None)
+    volcrv = _TermStructures.get(volcurve, None)
+    
+    if not bond:
+        return "Bond Not Found"
+    if not volcrv:
+        return "Vol Curve Not Found"
+
+    return volcrv.maturity(bond.settlementDate, bond.maturity)
+    
 def oasCalc(cusip, curve, price, vol, attr):
     global _Portfolio
 
