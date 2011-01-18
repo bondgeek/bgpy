@@ -190,7 +190,8 @@ class AssetSwap(object):
         else:
             ratio, spread = baseRatio, baseSpread + value_
         
-        retval = self.value(termstructure, spread, ratio, vol, spreadType, model)
+        retval = self.value(termstructure, spread, ratio, vol, spreadType, 
+                            model)
         self.baseswap = None
         self.swaption = None
         self.oasCurve = None
