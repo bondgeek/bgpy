@@ -94,13 +94,21 @@ class SimpleBond(SimpleBondType):
         self.issuedate = issuedate 
         self.redvalue = redvalue
         self.oid = oid
-        self.callfeature = callfeature
-        
+
+        self.setCallfeature(callfeature)
         self.setSettlement(settledate)
         
     def __str__(self):
         return "% ".join((str(self.coupon*100.0), str(self.maturity)))
     
+    def setCallfeature(self, callfeature):
+        if callfeature:
+            if callfeature.firstcall >= self.maturity:
+                callfeature = None
+        self.callfeature = callfeature
+        self.setSettlement(self.settlementDate)
+        
+        
     def setSettlement(self, settledate=None):
         '''
         Change settlement for bond calculations
@@ -118,13 +126,6 @@ class SimpleBond(SimpleBondType):
         if self.issuedate and self.daycount.dayCount(self.issuedate, settle_) < 0: 
             settle_ = self.issuedate
         self.settle_ = settle_
-        
-        # call list contains bond objects representing each call
-        # calling self.CallList sets those settlement dates.
-        if not self.callfeature:  
-            self.calllist = []
-        else: 
-            self.calllist = self.CallList()
                 
         #TODO: This maybe can be more robust for non-standard frequencies
         #      It works for annual, quarterly & semi-annual.
@@ -136,10 +137,17 @@ class SimpleBond(SimpleBondType):
         self.frac = self.term - self.nper
         self.term /= freq
         
+        # call list contains bond objects representing each call
+        # calling self.CallList sets those settlement dates.
+        if not self.callfeature:  
+            self.calllist = []
+        else: 
+            self.calllist = self.CallList()
+        
         return self
    
     def getSettlement(self):
-        return self.settle_
+        return getattr(self, "settle_", None)
    
     settlementDate = property(getSettlement, setSettlement)
     

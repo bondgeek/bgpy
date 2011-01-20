@@ -208,30 +208,25 @@ class AssetSwap(object):
         Enforces bound of 0.0% to 1000% on vol
         '''
         spreadFunc = self.spreadType.get(spreadType, self.aswValue)
-        
-        if not self.calllist:
-            # bond is not callable
-            return 1e-7
             
         bondyield = self.toYield(price)
          
         # set objective value, value function and initial values
-        objValue = -(price - 100.0) 
-        
+        objValue = price
         valueFunc = lambda x_: spreadFunc(termstructure, spread, ratio, 
-                                          x_, model=model,
-                                              solver=True)
+                                          x_, model=model, solver=True)
         
         # price can't be greater that 'zero' vol price or less than MAXVOL price
         # let's assume vol <= 1000%
-        if price > (100.0 - valueFunc(1e-7)):
-            return 1e-7
-        if price < (100.0 - valueFunc(10.0)):
-            return 10.0
-            
-        x_ = 0.09
-        x1 = 0.10
-        vol_ = Secant(x_, x1, valueFunc, objValue)
+        if price > valueFunc(1e-7) or not self.calllist: 
+            vol_ = 1e-7
+        elif price < valueFunc(10.0):
+            print("max vol price")
+            vol_ = 10.
+        else:    
+            x_ = 0.09
+            x1 = 0.10
+            vol_ = Secant(x_, x1, valueFunc, objValue)
         
         retval = self.value(termstructure, spread, ratio, vol_, spreadType, model)
         self.baseswap = None
