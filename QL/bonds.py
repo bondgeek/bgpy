@@ -95,18 +95,22 @@ class SimpleBond(SimpleBondType):
         self.redvalue = redvalue
         self.oid = oid
 
-        self.setCallfeature(callfeature)
         self.setSettlement(settledate)
+        self.setCallfeature(callfeature)
         
     def __str__(self):
         return "% ".join((str(self.coupon*100.0), str(self.maturity)))
     
-    def setCallfeature(self, callfeature):
+    def setCallfeature(self, callfeature=None):
         if callfeature:
             if callfeature.firstcall >= self.maturity:
                 callfeature = None
+                
         self.callfeature = callfeature
-        self.setSettlement(self.settlementDate)
+        
+        # call list contains bond objects representing each call
+        # calling self.CallList sets those settlement dates.
+        self.calllist = self.CallList()
         
         
     def setSettlement(self, settledate=None):
@@ -137,13 +141,6 @@ class SimpleBond(SimpleBondType):
         self.frac = self.term - self.nper
         self.term /= freq
         
-        # call list contains bond objects representing each call
-        # calling self.CallList sets those settlement dates.
-        if not self.callfeature:  
-            self.calllist = []
-        else: 
-            self.calllist = self.CallList()
-        
         return self
    
     def getSettlement(self):
@@ -152,7 +149,8 @@ class SimpleBond(SimpleBondType):
     settlementDate = property(getSettlement, setSettlement)
     
     def CallList(self):
-        '''Converts Call Feature to list of call dates and bond objects.
+        '''
+        Converts Call Feature to list of call dates and bond objects.
         
         '''
         
