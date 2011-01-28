@@ -107,6 +107,27 @@ class USDLiborSwap(object):
             
         return self.swap.NPV()
 
+    def z_dv01(self, termstructure_=None):
+        '''Z DV01
+        Price sensitivity to bp change in discount rates across the term structure.
+        '''
+        if termstructure_:
+            self.termstructure = termstructure_
+        if not self.termstructure:
+            return None 
+                
+        crv_up = self.termstructure.shift_up
+        crv_dn = self.termstructure.shift_dn
+        
+        p0 = self.value(crv_up)
+        p1 = self.value(crv_dn)
+        
+        self.termstructure = termstructure_
+        self.pricingEngine = self.termstructure.swapEngine()
+        self.swap.setPricingEngine(self.pricingEngine)
+
+        return (p0-p1) / 2.0
+
 class USDLiborSwaption(object):
     '''
     Vanilla Libor Swaption
