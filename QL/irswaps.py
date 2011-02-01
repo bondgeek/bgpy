@@ -2,6 +2,7 @@
 Created on Oct 14, 2009
 
 @author: bartmosley
+
 '''
 from math import exp, log
 
@@ -115,17 +116,18 @@ class USDLiborSwap(object):
             self.termstructure = termstructure_
         if not self.termstructure:
             return None 
-                
+            
         crv_up = self.termstructure.shift_up
         crv_dn = self.termstructure.shift_dn
         
-        p0 = self.value(crv_up)
-        p1 = self.value(crv_dn)
+        swp0 = USDLiborSwap(crv_up, self.startDate, self.termDate, 
+                            self.fixedRate)
+        swp1 = USDLiborSwap(crv_dn, self.startDate, self.termDate, 
+                            self.fixedRate)
         
-        self.termstructure = termstructure_
-        self.pricingEngine = self.termstructure.swapEngine()
-        self.swap.setPricingEngine(self.pricingEngine)
-
+        p0 = swp0.value()
+        p1 = swp1.value()
+        
         return (p0-p1) / 2.0
 
 class USDLiborSwaption(object):

@@ -18,7 +18,7 @@ class BondValues(Struct):
     alist = ['bondyield', 'price',
               'oasYield', 'callvalue', 'oasPrice', 
               'spread', 'ratio', 'gearedSpread',
-              'vol', 'spreadType', 'model', 'dv01']
+              'vol', 'spreadType', 'model', 'dv01', 'swapdv01', 'hedgeratio']
               
     def __init__(self, valueDict):
         val_ = {}
@@ -96,7 +96,7 @@ class AssetSwap(object):
         
         return (self.baseswap, self.swaption)
         
-    def oasValue(self, termstructure, spread, ratio=1.0, vol=1e-7, 
+    def oasValue(self, termstructure, spread_, ratio_=1.0, vol=1e-7, 
                        model=ql.BlackKarasinski, solver=False):
         '''
         OAS given spread
@@ -106,14 +106,16 @@ class AssetSwap(object):
         if (not solver) or not getattr(self, "oasCurve", None):
             self.oasCurve = SpreadedCurve(termstructure, type="Z")
         
-        self.update(self.oasCurve, 0.0, ratio)
+        self.update(self.oasCurve, 0.0, ratio_)
         
-        self.oasCurve.spread = spread
+        self.oasCurve.spread = spread_
         
-        prm = self.baseswap.value(self.oasCurve)
+        self.basevalue = self.baseswap.value(self.oasCurve)
+        prm = self.basevalue * ratio_
         
         if self.swaption:
-            self.callvalue = self.swaption.value(vol, self.oasCurve, model=model)
+            self.callvalue = self.swaption.value(vol, self.oasCurve, 
+                                                 model=model) * ratio_
             prm += self.callvalue
         
         if not solver:
@@ -129,10 +131,12 @@ class AssetSwap(object):
         Calculate asset swap premium, given spread and termstructure.
         Assumes termstructure object is derived from TermStructureModel class,
         or QuantLib YieldTermStructureHandle.
+        
         '''
         self.update(termstructure, spread_, ratio_)
         
-        prm = self.baseswap.value(termstructure) * ratio_
+        self.basevalue = self.baseswap.value(termstructure) 
+        prm = self.basevalue * ratio_
         
         if self.swaption:
             self.callvalue = self.swaption.value(vol, 
@@ -152,7 +156,8 @@ class AssetSwap(object):
                           baseRatio = 1.0,
                           solveRatio = False,
                           spreadType = "S",
-                          model=ql.BlackKarasinski):
+                          model=ql.BlackKarasinski,
+                          calc_risk = True):
         '''
         Calculate asset swap spread or ratio given price.
         
@@ -191,7 +196,8 @@ class AssetSwap(object):
             ratio, spread = baseRatio, baseSpread + value_
         
         retval = self.value(termstructure, spread, ratio, vol, spreadType, 
-                            model)
+                            model, calc_risk)
+                            
         self.baseswap = None
         self.swaption = None
         self.oasCurve = None
@@ -201,7 +207,8 @@ class AssetSwap(object):
                               spread = 0.0,
                               ratio = 1.0,
                               spreadType = "S",
-                              model=ql.BlackKarasinski):
+                              model=ql.BlackKarasinski,
+                              calc_risk = True):
         '''
         Calculate implied vol on asset swap.
         
@@ -228,19 +235,23 @@ class AssetSwap(object):
             x1 = 0.10
             vol_ = Secant(x_, x1, valueFunc, objValue)
         
-        retval = self.value(termstructure, spread, ratio, vol_, spreadType, model)
+        retval = self.value(termstructure, spread, ratio, vol_, spreadType, model,
+                            calc_risk)
+                            
         self.baseswap = None
         self.swaption = None
         self.oasCurve = None
+        
         return retval
         
     def base_dv01(self, termstructure, spread, ratio, vol, 
-                    model, valueFunc=None):
+                        model=ql.BlackKarasinski, 
+                        valueFunc=None):
         '''Z DV01
         Price sensitivity to bp change in discount rates across the term structure.
         '''
         if not valueFunc:
-            valueFunc = self.aswValue
+            valueFunc = self.oasValue
             
         crv_up = termstructure.shift_up
         crv_dn = termstructure.shift_dn
@@ -249,7 +260,28 @@ class AssetSwap(object):
         p1 = valueFunc(crv_dn, spread, ratio, vol, model)
         
         return (p0-p1) / 2.0
+    
+    def hedge_risk(self, termstructure, spread, ratio, vol, 
+                          model=ql.BlackKarasinski, 
+                          valueFunc=None):
+        
+        if not valueFunc:
+            valueFunc = self.oasValue
+            
+        crv_up = termstructure.shift_up
+        crv_dn = termstructure.shift_dn
+        
+        p0 = valueFunc(crv_up, spread, ratio, vol, model)
+        s0 = self.basevalue
+        p1 = valueFunc(crv_dn, spread, ratio, vol, model)
+        s1 = self.basevalue
+        
+        dv01 = (p0-p1) / 2.0   
+        swapdv01 = (s0 - s1) / 2.0
+        hedgeratio = dv01 / -swapdv01
 
+        return (hedgeratio, dv01, swapdv01) 
+        
     def spread_dv01(self, termstructure, spread, ratio, vol, 
                     model, valueFunc=None):
         if not valueFunc:
@@ -287,17 +319,19 @@ class AssetSwap(object):
                     vol = 1e-12,
                     spreadType="S",
                     model = ql.BlackKarasinski,
-                    calcDV01=True):
+                    calc_risk=False):
         '''
         Calculates termstructure / asset swap values -- sets "values" property.
         '''
         valueFunc = self.spreadType.get(spreadType, self.aswValue)
-        
-        value_ = valueFunc(termstructure, spread, ratio, vol, model=model) 
-        
-        dv01 = self.base_dv01(termstructure, spread, ratio, vol, 
-                              model, valueFunc) if calcDV01 else None
-                                      
+
+        value_ = valueFunc(termstructure, spread, ratio, vol, 
+                           model=model, solver=True)
+
+        risk = self.hedge_risk(termstructure, spread, ratio, vol, 
+                                model, valueFunc) if calc_risk else None
+        hedge, dv01, swapdv01 = risk if risk else (None, None, None)
+                
         dvalues = self.calc(bondprice=value_, dict_out=True)
         
         dvalues['callvalue'] = getattr(self, "callvalue", 0.0)
@@ -310,6 +344,8 @@ class AssetSwap(object):
         dvalues['vol'] = vol
         dvalues['model'] = model
         dvalues['dv01'] = dv01
+        dvalues['hedgeratio'] = hedge
+        dvalues['swapdv01'] = swapdv01
         
         retval = BondValues(dvalues)
         self.baseswap = None
@@ -323,7 +359,8 @@ class AssetSwap(object):
                    spread=None, ratio=None,
                    vol = 1e-12,
                    spreadType="S",
-                   model = ql.BlackKarasinski):
+                   model = ql.BlackKarasinski,
+                   calc_risk=True):
         '''
         Requires two of three inputs:
             1) price or yield
@@ -341,16 +378,19 @@ class AssetSwap(object):
                                                                 p, v, s, r,
                                                                 solveRatio,
                                                                 spreadType,
-                                                                model)
+                                                                model,
+                                                                calc_risk)
             else:
                 valueFunc = lambda t, p, v, s, r: self.solveImpliedVol(t, 
                                                                     p, s, r,
                                                                     spreadType,
-                                                                    model)
+                                                                    model,
+                                                                    calc_risk)
                 
         else:   
             valueFunc = lambda t, p, v, s, r: self.value(t, s, r, v,
-                                                   spreadType, model)
+                                                   spreadType, model,
+                                                   calc_risk)
         
         spread = spread if spread else 0.0
         ratio = ratio if ratio else 1.0
