@@ -147,8 +147,13 @@ class XLOut(object):
     
     datestyle = xlwt.XFStyle()
     datestyle.num_format_str='MM/DD/YYYY'
+    
+    pctstyle = xlwt.XFStyle()
+    pctstyle.num_format_str="0.000%"
+    
     defaultstyle = xlwt.XFStyle()
-    styles = {"date": datestyle}
+    
+    styles = {"date": datestyle, "pct": pctstyle}
     
     def __init__(self, fname, sheets=["Sheet1"]):
         self.filename = fname
