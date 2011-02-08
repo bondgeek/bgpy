@@ -41,7 +41,9 @@ class USDLiborSwap(object):
     def __init__(self, termstructure, startDate, termDate, fixedRate, PayFlag=1, 
                 spread=0.0, notionalAmount=100.0,
                 setPriceEngine=False):
+                
         self.termstructure = termstructure
+        
         startDate, termDate = map(toDate, [startDate, termDate])
         self.payFlag = FixedPayer if PayFlag else FixedReceiver
         self.startDate = startDate

@@ -177,6 +177,12 @@ class TermStructureModel(object):
         self._shift_dn = SpreadedCurve(self, shock, spreadType)
         return True
     
+    def clear_scenarios(self):
+        if hasattr(self, "_shift_up"):
+            delattr(self, "_shift_up")
+        if hasattr(self, "_shift_dn"):
+            delattr(self, "_shift_dn")
+    
     @property
     def shift_up(self):
         if not hasattr(self, "_shift_up"):
@@ -256,6 +262,8 @@ class SimpleCurve(TermStructureModel):
                                                curvedata.values(), 
                                                self.datadivisor)                                       
         self.curve_(self.ratehelpers.vector)
+
+        self.clear_scenarios()
 
         return self
   
