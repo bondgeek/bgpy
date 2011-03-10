@@ -32,15 +32,30 @@ def xlValue(x, datemode=1, hash_comments=1):
     except:
         return None 
 
+                 
 class XLdb(object):
     '''
     Container class for loading an Excel Database
     
     Class creates member dictionary with data from the specified 
     spreadsheet.
-        - hash_comments=True returns 'None' if cell string starts with "#', ala Bloomberg data.
-        - idx_column determines which column to serve as the key 
-          for the qdata dictionary.  '-1' uses the row number as key.
+    
+    startrow:       Begin reading at this row (0 indexed), ignore ealier rows
+    
+    sheet_index:    0-indexed sheet number.  Overridden by sheet_name if 
+                    available
+                    
+    sheet_name:     Name of sheet. Overrides sheet_index value.
+    
+    idx_column:     Column to serve as the dict key for qdata.
+                    '-1' uses the row number as key.
+                    
+    header:         True--return rows as dict objects, with 'startrow' as keys.
+                    False--return rows as list
+                    
+    hash_comments:  True returns 'None' if cell string starts with "#', 
+                    ala Bloomberg data errors
+                    
     '''
     def __init__(self, filepath, startrow=0, sheet_index=0,
                  sheet_name=None, header=True,
@@ -72,6 +87,7 @@ class XLdb(object):
             rowValues = lambda row_, loc: dict(zip(self.hdr[loc:],
                                                    cleanrow_(row_[loc:])))
         else:
+            self.hdr = None
             rowValues = lambda row_, loc: cleanrow_(row_[loc:])
 
         self.refcolumn = []
