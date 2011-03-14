@@ -18,14 +18,14 @@ except:
     def GetMonth(m):
         return m
                 
-stddate_re = re.compile("[-//]".join(("([1-9]{1}|[0][1-9]|[1][0-2])", #regex month
-                                   "([1-9]{1}|[0][1-9]|[1-3][0-9])", #regex day
+stddate_re = re.compile("[-//]".join(("([0][1-9]|[1][0-2]|[1-9]{1})", #regex month
+                                   "([0][1-9]|[1-3][0-9]|[1-9]{1})", #regex day
                                    "([1-9][0-9]{3}|[0-9][0-9])")   #regex year
                                   ))
                                   
 isodate_re = re.compile("[-//]".join(("([1-9][0-9]{3}|[0-9][0-9])",   #regex year
-                                   "([1-9]{1}|[0][1-9]|[1][0-2])", #regex month
-                                   "([1-9]{1}|[0][1-9]|[1-3][0-9])") #regex day
+                                   "([0][1-9]|[1][0-2]|[1-9]{1})", #regex month
+                                   "([0][1-9]|[1-3][0-9]|[1-9]{1})") #regex day
                                   ))
 
 longdate_re = re.compile("(?P<Y>[1-9][0-9]{3})(?P<M>[0-1][0-9])(?P<D>[0-3][0-9])")                                  
@@ -88,7 +88,7 @@ def dateTuple(dateObject):
             m, d, y = (dateObject.Month,
                        dateObject.Day,
                        dateObject.Year)
-        elif type(dateObject) in [str, int]:
+        elif type(dateObject) in [unicode, str, int]:
             dtobj = strDateTuple(dateObject)
             if dtobj:
                 m, d, y = dtobj
