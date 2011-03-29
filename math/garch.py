@@ -150,7 +150,8 @@ class GARCH(Struct):
         mu:         drift estimate
         garch:      estimated GARCH parameters, alpha, beta, omega
         
-        Uses scipy.optimize.fmin to minimize the negative of the likelihood function.
+        Uses scipy.optimize.fmin to minimize the negative of the likelihood 
+        function.
         
         '''
         self['ydata'] = yseries
@@ -177,7 +178,10 @@ class GARCH(Struct):
         return self.mleEst
     
     def estimate_variance(self):
+        '''
+        v_estimates: creates a series of variance estimates.
         
+        '''
         if not self.uptodate:
             print("Model estimates not up to date")
             return None
@@ -193,13 +197,17 @@ class GARCH(Struct):
                                            yseries_[n-1]) )
         
         self['v_estimates'] = variance_est
-    
-    def estimate_volatility(self, annualize=252):
+        return variance_est
         
+    def estimate_volatility(self, annualize=260):
+        '''
+        vol_series: creates a series of annualized variances
+        
+        '''
         if not self.v_estimates:    
             self.estimate_variance()
         
-        self['vol_series'] =  [np.sqrt(v*252) for v in self.v_estimates]
+        self['vol_series'] =  [np.sqrt(v*annualize) for v in self.v_estimates]
         
         return self.vol_series
         
