@@ -157,7 +157,7 @@ class XLdb(object):
 
 class XLOut(object):
     '''
-    Creates a workbook object for writing.  Defines a dictionary of cell formats,
+    Creates a workbook object for writing.  Defines a dict of cell formats,
     e.g. "date".
     
     >>> wkb = XLout(filename)
@@ -178,7 +178,7 @@ class XLOut(object):
     
     styles = {"date": datestyle, "pct": pctstyle}
     
-    def __init__(self, fname, sheets=["Sheet1"]):
+    def __init__(self, fname, sheets=["Sheet1"], overwrite_ok=False):
         self.filename = fname
         
         self.wkb = xlwt.Workbook()                
@@ -187,7 +187,7 @@ class XLOut(object):
         self.sheets = sheets
         for n in range(len(sheets)):
             sheetname = sheets[n]
-            self.sheet[n] = self.wkb.add_sheet(sheetname)
+            self.sheet[n] = self.wkb.add_sheet(sheetname, overwrite_ok)
     
     def select_sheet(self, sheet=0):
         "return object for sheet"
