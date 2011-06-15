@@ -3,6 +3,7 @@ Functions cribbed and modified from GVR's article
 
 Python Patterns -- An Optimization Anecdote
 http://www.python.org/doc/essays/list2str.html
+
 '''
 
 __all__ = ['timing', 'fcompare', 'code_timer', 'timer']
@@ -92,7 +93,8 @@ if __name__ == "__main__":
         except TypeError:
             return False
 
-    isit2 = lambda obj: isinstance(obj,basestring) or getattr(obj,'__iter__',False)
+    isit2 = lambda obj: (isinstance(obj, basestring) or 
+                         getattr(obj,'__iter__', False))
 
     def isit3(obj):
         return (isinstance(obj,basestring) or getattr(obj,'__iter__',False))

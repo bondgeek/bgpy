@@ -39,4 +39,3 @@ PathJoin = os.path.join
 from bgpy.xldb import XLdb, XLOut
 
 from bgpy.cusips import cusipcheckdigit, ischeckdigit, validate_cusip
-            

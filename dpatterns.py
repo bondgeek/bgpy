@@ -118,8 +118,8 @@ class Struct(dict):
     '''
     Creates a static dict data structure.
       
-    Updates of attributes 'bounce off' after initial set--i.e., no error is returned
-    but contents are not effected.
+    Updates of attributes 'bounce off' after initial set--i.e., no error 
+    is returned but contents are not effected.
     
     '''
     def __getattr__(self, k):
