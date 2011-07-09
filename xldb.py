@@ -107,6 +107,7 @@ class XLdb(object):
             self.hdr = [getvalue(h) for h in self.sh.row(startrow)]
             rowValues = lambda row_, loc: dict(zip(self.hdr[loc:],
                                                    cleanrow_(row_[loc:])))
+                                                   
         else:
             self.hdr = None
             rowValues = lambda row_, loc: cleanrow_(row_[loc:])
