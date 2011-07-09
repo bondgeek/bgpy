@@ -7,6 +7,7 @@ import os
 import xlrd
 import xlwt
 
+from urllib2 import urlopen
 from datetime import date, timedelta
 
 def xl_to_date(xdate, _datemode = 1):
@@ -39,6 +40,18 @@ def xlValue(x, datemode=1, hash_comments=1, strip_text=1):
     except:
         return None 
 
+class XLSBook(object):
+    def __init__(self, url, localfile=False):
+        if localfile:
+            url = "/".join(("file://localhost", url))
+
+        connection = urlopen(url)
+        try:
+            self.book = xlrd.open_workbook(on_demand=True,
+                                           file_contents=connection.read())
+        finally:
+            connection.close()
+
                  
 class XLdb(object):
     '''
@@ -66,10 +79,11 @@ class XLdb(object):
     '''
     def __init__(self, filepath, startrow=0, sheet_index=0,
                  sheet_name=None, header=True,
-                 idx_column=0, hash_comments=1):
+                 idx_column=0, hash_comments=1,
+                 localfile=True):
 
         self.filepath = filepath
-        self.book = xlrd.open_workbook(filepath, on_demand=True)
+        self.book = XLSBook(filepath, localfile=localfile).book
         self.datemode = self.book.datemode
         
         if sheet_name:
@@ -121,6 +135,7 @@ class XLdb(object):
                 self.qdata[dkey] = xrvalues
         
         self.book.unload_sheet(self.sh.name)
+        self.book.release_resources()
     
     def get(self, key, default=None):
         if self.qdata:
