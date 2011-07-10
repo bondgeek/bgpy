@@ -41,7 +41,7 @@ def xlValue(x, datemode=1, hash_comments=1, strip_text=1):
         return None 
 
 class XLSBook(object):
-    def __init__(self, url, localfile=False):
+    def __init__(self, url, localfile=False, hash_comments=True):
         if localfile:
             url = "/".join(("file://localhost", url))
 
@@ -49,8 +49,44 @@ class XLSBook(object):
         try:
             self.book = xlrd.open_workbook(on_demand=True,
                                            file_contents=connection.read())
+            self.datemode = self.book.datemode
+            self.hash_comments = hash_comments
+            
         finally:
             connection.close()
+    
+                
+    def xlCellValue(self, x):
+        return xlValue(x, self.datemode, self.hash_comments)
+
+    def sheet(self, sheet_name=None, sheet_index=0):
+        
+        if sheet_name:
+            self.sh = self.book.sheet_by_name(sheet_name)
+        else:
+            self.sh = self.book.sheet_by_index(sheet_index)
+            
+        return self.sh
+        
+    def rows(self, sheet_name=None, sheet_index=0):
+        
+        self.sh = self.sheet(sheet_name, sheet_index)
+        
+        cleanrow_ = lambda row_: [x if x is not '' else None for x in row_]
+        
+        self.qdata = []
+        for xrow in range(self.sh.nrows):
+            try:
+                xr = map(self.xlCellValue, self.sh.row(xrow))
+                
+            except:
+                print("problem with row %s" % xrow)
+                continue #skips a row if there's a problem
+                
+            else:
+                xrvalues = cleanrow_(xr)
+                self.qdata.append(xrvalues)
+
 
                  
 class XLdb(object):
@@ -121,9 +157,11 @@ class XLdb(object):
         for xrow in range(startatrow, self.nrows):
             try:
                 xr = map(self.xlCellValue, self.sh.row(xrow))
+                
             except:
                 print("problem with row %s" % xrow)
                 continue #skips a row if there's a problem
+                
             else:
                 xrvalues = rowValues(xr, startloc)
                 dkey = xr[idx_column] if idx_column >= 0 else xrow
