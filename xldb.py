@@ -43,8 +43,10 @@ def xlValue(x, datemode=1, hash_comments=1, strip_text=1):
 class XLSBook(object):
     def __init__(self, url, localfile=False, hash_comments=True):
         if localfile:
-            url = "/".join(("file://localhost", url))
-
+            jstr = "" if url[0]=="/" else "/"
+            url = jstr.join(("file://localhost", url))
+        print("Reading url: %s" % url)
+        
         connection = urlopen(url)
         try:
             self.book = xlrd.open_workbook(on_demand=True,
