@@ -108,6 +108,8 @@ class XLdb(object):
     idx_column:     Column to serve as the dict key for qdata.
                     '-1' uses the row number as key.
                     
+    numrows:        Number of rows to read.  'None'(default) to read all.
+                    
     header:         True--return rows as dict objects, with 'startrow' as keys.
                     False--return rows as list
                     
@@ -117,7 +119,8 @@ class XLdb(object):
     '''
     def __init__(self, filepath, startrow=0, sheet_index=0,
                  sheet_name=None, header=True,
-                 idx_column=0, hash_comments=1,
+                 idx_column=0, numrows=None,
+                 hash_comments=1,
                  localfile=True):
 
         self.filepath = filepath
@@ -153,10 +156,15 @@ class XLdb(object):
         self.refcolumn = []
         self.qdata = {}
         
+        # set rows, column to start and end reading
         startatrow = startrow + 1 if header else startrow
+        if not numrows:
+            numrows = self.nrows
+        
         startloc = 1 if idx_column == 0 else 0
-            
-        for xrow in range(startatrow, self.nrows):
+        
+        # read in cell values by row from sheet
+        for xrow in range(startatrow, numrows):
             try:
                 xr = map(self.xlCellValue, self.sh.row(xrow))
                 
