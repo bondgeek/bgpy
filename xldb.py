@@ -160,6 +160,8 @@ class XLdb(object):
         startatrow = startrow + 1 if header else startrow
         if not numrows:
             numrows = self.nrows
+        else:
+            numrows = startatrow+numrows
         
         startloc = 1 if idx_column == 0 else 0
         
