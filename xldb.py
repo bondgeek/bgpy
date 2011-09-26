@@ -399,7 +399,7 @@ class XLOut(object):
         ws.set_horz_split_pos(row_+1)
         ws.set_vert_split_pos(col_+1)
         
-    def timeseries(xdata, sheet=0, hdr=None):
+    def timeseries(self, xdata, sheet=0, hdr=None):
         '''
         xdata:  a dict object, {date_key: value}, where the key is assumed to
                 be a datetime.date object.  'value' is either a single value or 
@@ -413,26 +413,35 @@ class XLOut(object):
         
         # create header if not provided
         if not hdr:
-            testdata = xdata[date_keys[0]]        
+            testdata = xdata[date_keys[0]] 
+
             hdr = ['date']
-            try:
-                hdr.extend(['value'+str(n) for n in range(1, len(testdata))+1])
+            if hasattr(testdata, "__iter__"):
+                hdr.extend(['value%s'%str(n) for n in range(1, len(testdata)+1)])
+                get_column_value = lambda colnum: value[colnum-1]
                 
-            except:
+            else:
                 hdr.append('value1')
+                get_column_value = lambda n: value
                 
-         # write header row
+        # write header row
         for ncol in range(len(hdr)):
-            self.write(hdr[ncol], 0, ncol, 0)
-        
+            rc = self.write(hdr[ncol], 0, ncol, sheet)
+            if rc:
+                print rc
+                return rc
+                
         # write data rows
         for nrow, dt in enumerate(date_keys, start=1):
-            self.write(dt, nrow, 0, 0, format='date')
+            self.write(dt, nrow, 0, sheet, format='date')
             
+            value = xdata[dt]
             for ncol in range(1, len(hdr)):
-                value = xdata[dt]
-                self.write(value, nrow, ncol, format=hdr[ncol][1])   
-    
+                rc = self.write(get_column_value(ncol), nrow, ncol, sheet)   
+                if rc:
+                    print rc
+                    return rc
+                    
     def save(self):
         self.wkb.save(self.filename)
 

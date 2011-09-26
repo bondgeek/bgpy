@@ -38,4 +38,3 @@ class ExpMA(object):
             self.value_ = (observation - prv) * self.factor + prv 
     
         return self.value_
-
