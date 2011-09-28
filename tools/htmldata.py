@@ -26,8 +26,11 @@ def quotes_yahoo(ticker, begin, end=None, mode='d'):
     
     # call matplotlib function, asobject=True
     # for structured numpy array
-    quotes = quotes_historical_yahoo('INTC', date1, date2, asobject=True)
-    
+    try:
+        quotes = quotes_historical_yahoo(ticker, date1, date2, asobject=True)
+    except:
+        return None
+        
     if mode == 'd':
         vTuple = lambda x: (x['date'], 
                             tuple([x[h] for h in quote_header[1:]]))

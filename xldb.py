@@ -411,19 +411,24 @@ class XLOut(object):
         date_keys = xdata.keys()
         date_keys.sort()
         
+        # how will we access data?
+        testdata = xdata[date_keys[0]] 
+        if hasattr(testdata, "__iter__"):
+            get_column_value = lambda colnum: value[colnum-1]
+            
+        else:
+            get_column_value = lambda n: value
+
         # create header if not provided
         if not hdr:
-            testdata = xdata[date_keys[0]] 
-
             hdr = ['date']
+
             if hasattr(testdata, "__iter__"):
                 hdr.extend(['value%s'%str(n) for n in range(1, len(testdata)+1)])
-                get_column_value = lambda colnum: value[colnum-1]
                 
             else:
                 hdr.append('value1')
-                get_column_value = lambda n: value
-                
+        
         # write header row
         for ncol in range(len(hdr)):
             rc = self.write(hdr[ncol], 0, ncol, sheet)

@@ -42,7 +42,7 @@ def spread_timeseries(series1, series2):
         if value2:
             value1 = series1.get(dt, None)
             spread = value1 - value2
-            ratio = value2/value1
+            ratio = value1/value2
             spread_series[dt] = (value1, value2, spread, ratio)
 
     return spread_series
