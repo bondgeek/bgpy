@@ -1,3 +1,7 @@
+'''
+Timeseries manipulation
+
+'''
 
 def join_timeseries(*args):
     '''
@@ -25,7 +29,7 @@ def join_timeseries(*args):
         
     return series1
     
-    
+
 def spread_timeseries(series1, series2):
     '''
     Returns a time series dict object 
