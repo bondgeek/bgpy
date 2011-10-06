@@ -5,7 +5,7 @@ Timeseries manipulation
 
 def join_timeseries(*args):
     '''
-    Returns a time series dict object joining tg
+    Returns a timeseries dict object joining several series by date.
     
     '''
     series1 = {}

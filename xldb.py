@@ -226,7 +226,7 @@ class XLdb(object):
         spreadsheet data, not and error.
         
         '''
-        colList = [self.qdata[recx].get('Cusip', None) 
+        colList = [self.qdata[recx].get(columnName, None) 
                    for recx in self.refcolumn]
                    
         if reduce:
