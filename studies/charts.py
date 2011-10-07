@@ -5,16 +5,17 @@ from datetime import date
 
 def timeseries_chart(tsdata, filename=None, fdir=None, **kwgs):
     '''
-    timeseries_chart(tsdata, "chart.png", 
-                              fdir="/static", 
-                              dpi=150, 
-                              title="timeseries chart", 
-                              ylabel='yields', 
-                              xlabel='dates', 
-                              axis_bgcolor='w', 
-                              edgecolor='w',
-                              facecolor='w')
-                              
+    >timeseries_chart(tsdata, 
+                      "chart.png", 
+                      fdir="/static", 
+                      dpi=150, 
+                      title="timeseries chart", 
+                      ylabel='yields', 
+                      xlabel='dates', 
+                      axis_bgcolor='w', 
+                      edgecolor='w',
+                      facecolor='w')
+                      
     Returns full path name of png file for chart.
 
     colors:
@@ -60,13 +61,14 @@ def timeseries_chart(tsdata, filename=None, fdir=None, **kwgs):
 
     if not fdir:
         fdir = os.getcwd()
-        
+    
+    # create tempfile if no filename provided
     if not filename:
         fd, fpath = mkstemp(dir=fdir, suffix=".png")
         os.close(fd)
         
     else:
-        # make sure file ends with .xls extension
+        # make sure file ends with .png extension
         fname = '.'.join((filename.split('.')[0], "png"))
         fpath = os.path.join(fdir if fdir else '', filename)
 

@@ -433,7 +433,8 @@ class XLOut(object):
         for ncol in range(len(hdr)):
             rc = self.write(hdr[ncol], 0, ncol, sheet)
             if rc:
-                print rc
+                print("\nXLOut.timeseries problem writing header:\n%s\n" % rc)
+                print("Sheet %s, row %s, column %\n" % (sheet, 0, ncol))
                 return rc
                 
         # write data rows
@@ -444,7 +445,8 @@ class XLOut(object):
             for ncol in range(1, len(hdr)):
                 rc = self.write(get_column_value(ncol), nrow, ncol, sheet)   
                 if rc:
-                    print rc
+                    print("\nXLOut.timeseries problem writing data:\n%s\n" % rc)
+                    print("Sheet %s, row %s, column %\n" % (sheet, nrow, ncol))
                     return rc
                     
     def save(self):
