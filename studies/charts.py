@@ -70,7 +70,7 @@ def timeseries_chart(tsdata, filename=None, fdir=None, **kwgs):
     else:
         # make sure file ends with .png extension
         fname = '.'.join((filename.split('.')[0], "png"))
-        fpath = os.path.join(fdir if fdir else '', filename)
+        fpath = os.path.join(fdir if fdir else '', fname)
 
     fig=Figure()
     fig.set_edgecolor(kwgs.get('edgecolor', 'w'))
