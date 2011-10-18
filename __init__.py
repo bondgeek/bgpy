@@ -21,7 +21,7 @@ try:
     # os should be on path
     import os
 except:
-    # if not, try Resolver setup, if this doesn't work--SOL
+    # if not, try Resolver setup, if this doesn't work--S.O.L
     from resolverlib import *
     import os
     
@@ -31,7 +31,7 @@ version = (0,0,1)
 version_string = "bgpy:  BG Tools version %d.%d.%d " % version
 
 HOMEDRIVE = os.environ.get("HOMEDRIVE", None) # only for windows
-HOMEPATH = os.environ.get('HOME', os.environ.get('HOMEPATH', None))
+HOMEPATH = os.environ.get('HOMEPATH', os.environ.get('HOME', None))
 HOMEPATH = os.path.join(HOMEDRIVE, HOMEPATH)
 
 PathJoin = os.path.join
