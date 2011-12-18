@@ -22,7 +22,7 @@ import sys
 import xlrd
 import xlwt
 
-from urllib2 import urlopen
+from urllib2 import urlopen, URLError
 from datetime import date, timedelta
 from tempfile import mkstemp
 
@@ -58,20 +58,33 @@ def xlValue(x, datemode=1, hash_comments=1, strip_text=1):
 
 class XLSBook(object):
     def __init__(self, url, localfile=False, hash_comments=True):
+        self.book = None
+        self.hash_comments = hash_comments
+        
         if localfile:
             jstr = "" if url[0]=="/" else "/"
             url = jstr.join(("file://localhost", url))
-        print("Reading url: %s" % url)
-        
-        connection = urlopen(url)
         try:
-            self.book = xlrd.open_workbook(on_demand=True,
-                                           file_contents=connection.read())
-            self.datemode = self.book.datemode
-            self.hash_comments = hash_comments
+            connection = urlopen(url)
             
-        finally:
-            connection.close()
+        except URLError as strerr:
+            print("\nURL Error reading url: %s\n %s" % (url, strerr))
+        
+        except: 
+            print("\nGeneral Error reading url: %s\n%s" % url)
+        
+        else:
+            try:
+                self.book = xlrd.open_workbook(on_demand=True,
+                                               file_contents=connection.read())
+            except:
+                print("Error on %s" % ur)
+            
+            else:
+                self.datemode = self.book.datemode
+
+            finally:
+                connection.close()
     
                 
     def xlCellValue(self, x):
@@ -105,6 +118,25 @@ class XLSBook(object):
                 xrvalues = cleanrow_(xr)
                 self.qdata.append(xrvalues)
 
+    def read_sheet(self, sheet_name=None, sheet_index=0):
+        def read_row(sheet, row):
+            try:
+                xr = map(self.xlCellValue, sh.row(row))
+                
+            except:
+                #skips a row if there's a problem
+                print("problem with row %s" % xrow)
+                xr = []
+                
+            return xr
+            
+        sh = self.sheet(sheet_name, sheet_index)
+        
+        return [read_row(sh, xrow) for xrow in range(sh.nrows)]
+        
+        
+            
+        
 
                  
 class XLdb(object):
