@@ -22,10 +22,19 @@ import sys
 import xlrd
 import xlwt
 
+import openpyxl as pyxl
+
 from urllib2 import urlopen, URLError
 from datetime import date, timedelta
 from tempfile import mkstemp
 
+
+def get_xlvalue(h_):
+    if hasattr(h_.value, "encode"):
+        return h_.value.encode()
+    else:
+        return h_.value
+            
 def xl_to_date(xdate, _datemode = 1):
     yyyy, mm, dd, h, m, s =xlrd.xldate_as_tuple(xdate.value, _datemode)
     return date(yyyy, mm, dd)
@@ -56,57 +65,107 @@ def xlValue(x, datemode=1, hash_comments=1, strip_text=1):
     except:
         return None 
 
-class XLSBook(object):
-    def __init__(self, url, localfile=False, hash_comments=True):
+class XLSReader(object):
+    def __init__(self, url, localfile=True, hash_comments=True):
         self.book = None
         self.hash_comments = hash_comments
         
         if localfile:
-            jstr = "" if url[0]=="/" else "/"
-            url = jstr.join(("file://localhost", url))
-        try:
-            connection = urlopen(url)
-            
-        except URLError as strerr:
-            print("\nURL Error reading url: %s\n %s" % (url, strerr))
-        
-        except: 
-            print("\nGeneral Error reading url: %s\n%s" % url)
-        
-        else:
             try:
                 self.book = xlrd.open_workbook(on_demand=True,
-                                               file_contents=connection.read())
+                                               filename=url)
             except:
-                print("Error on %s" % ur)
+                print("Error on %s" % url)
+        else:
+            try:
+                conn = urlopen(url)
+                
+            except URLError as strerr:
+                print("\nURL Error reading url: %s\n %s" % (url, strerr))
             
+            except: 
+                print("\nGeneral Error reading url: %s\n" % url)
+                
             else:
-                self.datemode = self.book.datemode
-
+                try:
+                    self.book = xlrd.open_workbook(on_demand=True,
+                                                   file_contents=conn.read())
+                except:
+                    print("Error on %s" % url)
+            
             finally:
-                connection.close()
-    
+                conn.close()
+            
+        if self.book:
+            self.datemode = self.book.datemode
                 
     def xlCellValue(self, x):
         return xlValue(x, self.datemode, self.hash_comments)
 
-    def sheet(self, sheet_name=None, sheet_index=0):
+    def sheet(self, sheet=None):
+        '''
+        Returns worksheet object by name or index, 
         
-        if sheet_name:
-            self.sh = self.book.sheet_by_name(sheet_name)
+        Example:
+        > wb = XLSReader('test.xls')
+        > wb.sheet('sheet2')   # returns sheet named 'sheet2'
+        > wb.sheet(3)          # returns sheet with index 3
+        
+        Default (if no argument is pased) returns sheet index = 0 
+        
+        '''
+        if type(sheet) == int:
+            sheet_name, sheet_index = None, sheet
         else:
-            self.sh = self.book.sheet_by_index(sheet_index)
-            
+            sheet_name, sheet_index = sheet, 0
+        
+        try:
+            if sheet_name:
+                self.sh = self.book.sheet_by_name(sheet)
+            else:
+                self.sh = self.book.sheet_by_index(sheet)
+        except:
+            print("Invalid sheet %s %s" % (sheet, type(sheet)))
+            return None
+        
+        self.ncolumns = self.sh.ncols
+        self.nrows = self.sh.nrows
+        
         return self.sh
         
-    def rows(self, sheet_name=None, sheet_index=0):
+    def sheet_as_db(self, sheet=None, 
+                    header=False, dkey=-1,
+                    startrow=0, numrows=None):
+        '''
+        Reads rows in a given sheet. Returns (refcolumn, qdata)
         
-        self.sh = self.sheet(sheet_name, sheet_index)
+        '''
+        self.sh = self.sheet(sheet)
         
         cleanrow_ = lambda row_: [x if x is not '' else None for x in row_]
+            
+        startloc = 1 if dkey == 0 else 0
         
-        self.qdata = []
-        for xrow in range(self.sh.nrows):
+        hdr = None
+        if header:
+            startatrow = startrow + 1
+            hdr = [get_xlvalue(h) for h in self.sh.row(startrow)]
+            def rowValues(row_, loc): 
+                return dict(zip(hdr[loc:],
+                                cleanrow_(row_[loc:])))
+                                                   
+        else:
+            rowValues = lambda row_, loc: cleanrow_(row_[loc:])
+        
+        qdata = []
+        refcolumn = []
+        
+        if not numrows:
+            numrows = self.sh.nrows
+        else:
+            numrows = startatrow + numrows
+            
+        for xrow in range(startatrow, numrows):
             try:
                 xr = map(self.xlCellValue, self.sh.row(xrow))
                 
@@ -115,8 +174,19 @@ class XLSBook(object):
                 continue #skips a row if there's a problem
                 
             else:
-                xrvalues = cleanrow_(xr)
-                self.qdata.append(xrvalues)
+                xrvalues = rowValues(xr, startloc)
+                qdata.append(xrvalues)
+                if dkey >= 0:
+                    refcolumn.append(xr[dkey])
+                else:
+                    refcolumn.append(xrow)
+        
+        nrows = len(qdata)
+        
+        if dkey >= 0:
+            qdata = dict(zip(refcolumn, qdata))
+            
+        return (refcolumn, hdr, qdata)
 
     def read_sheet(self, sheet_name=None, sheet_index=0):
         def read_row(sheet, row):
@@ -133,12 +203,114 @@ class XLSBook(object):
         sh = self.sheet(sheet_name, sheet_index)
         
         return [read_row(sh, xrow) for xrow in range(sh.nrows)]
-        
-        
-            
-        
 
+class XLSXReader(object):
+    def __init__(self, filename, hash_comments=True):
+        self.book = None
+        self.hash_comments = hash_comments
+        
+        # TODO: if we need to connect via url, try this kind of thing
+        #  url = urlopen(filename)
+        #  contents = url.read()
+        #  stio = StringIO.StringIO(contents) 
+        #  book = pyxl.reader.excel.load_workbook(filename = stio) 
+        try:
+            self.book = pyxl.reader.excel.load_workbook(filename=filename,
+                                                        use_iterators=True)
+        except:
+            print("Error on %s" % filename)
+            raise
+                
+    def xlCellValue(self, x): 
+        if self.hash_comments and hasattr(x, "__iter__"):
+            if x[0] == '#':
+                return None
+        try:
+            return x.internal_value
+        except:
+            return x.value
+
+    def sheet(self, sheet=None):
+        '''
+        Returns worksheet object by name or index, 
+        
+        Example:
+        > wb = XLSXReader('test.xls')
+        > wb.sheet('sheet2')   # returns sheet named 'sheet2'
+        > wb.sheet(3)          # returns sheet with index 3
+        
+        Default (if no argument is pased) returns sheet index = 0 
+        
+        '''
+        if type(sheet) == int:
+            sheet_name, sheet_index = None, sheet
+        else:
+            sheet_name, sheet_index = sheet, 0
+        
+        try:
+            if not sheet_name:
+                sheet_name = self.book.get_sheet_names()[sheet_index]
+        except:
+            print("Invalid sheet: %s %s" % (sheet, type(sheet)))
+            return None
+        
+        self.sh = self.book.get_sheet_by_name(sheet_name)
+        
+        return self.sh
+        
+    def sheet_as_db(self, sheet=None,
+                    header=False, dkey=-1,
+                    startrow=0, numrows=None):
+        '''
+        Reads rows in a given sheet. Data is stored in 
+        class member list self.qdata
+        
+        '''
+        self.sh = self.sheet(sheet)
+        
+        startloc = 1 if dkey == 0 else 0
+        
+        rowValues = lambda row_, loc: row_[loc:]
+        hdr = None
+        qdata = []
+        refcolumn = []
+        
+        nrow = 0
+        for row in self.sh.iter_rows():
+            if nrow == startrow:
+                if header:
+                    hdr = [cell.internal_value for cell in row]
+                    def rowValues(row_, loc): 
+                        return dict(zip(hdr[loc:],
+                                        row_[loc:]))
+            elif nrow <= startrow:
+                continue
+            
+            nrow += 1
+            
+            try:
+                xr = map(self.xlCellValue, row)
+                
+            except:
+                print("problem with row %s" % nrow)
+                continue #skips a row if there's a problem
+                
+            else:
+                xrvalues = rowValues(xr, startloc)
+                qdata.append(xrvalues)
+                if dkey >= 0:
+                    refcolumn.append(xr[dkey])
+                else:
+                    refcolumn.append(nrow)
+        
+        nrows = len(qdata)
+        
+        if dkey >= 0:
+            qdata = dict(zip(refcolumn, qdata))
+            
+        return (refcolumn, hdr, qdata)
                  
+
 class XLdb(object):
     '''
     Container class for loading an Excel Database
@@ -147,91 +319,37 @@ class XLdb(object):
     spreadsheet.
     
     startrow:       Begin reading at this row (0 indexed), ignore ealier rows
-    
-    sheet_index:    0-indexed sheet number.  Overridden by sheet_name if 
-                    available
                     
-    sheet_name:     Name of sheet. Overrides sheet_index value.
+    header:         True--return rows as dict objects, with 'startrow' as keys.
+                    False--return rows as list
+                    
+    sheet:     Name of sheet or 0-indexed sheet number.          
     
     idx_column:     Column to serve as the dict key for qdata.
                     '-1' uses the row number as key.
                     
     numrows:        Number of rows to read.  'None'(default) to read all.
                     
-    header:         True--return rows as dict objects, with 'startrow' as keys.
-                    False--return rows as list
-                    
     hash_comments:  True returns 'None' if cell string starts with "#', 
                     ala Bloomberg data errors
                     
     '''
-    def __init__(self, filepath, startrow=0, sheet_index=0,
-                 sheet_name=None, header=True,
-                 idx_column=0, numrows=None,
+    def __init__(self, filepath, sheet=0,   
+                 header=True, idx_column=0, 
+                 startrow=0, numrows=None,
                  hash_comments=1,
                  localfile=True):
 
         self.filepath = filepath
-        self.book = XLSBook(filepath, localfile=localfile).book
-        self.datemode = self.book.datemode
+        self.xlsbook = XLSReader(filepath, localfile=localfile)
+        self.book = self.xlsbook.book
         
-        if sheet_name:
-            self.sh = self.book.sheet_by_name(sheet_name)
-        else:
-            self.sh = self.book.sheet_by_index(sheet_index)
-            
-        self.ncolumns = self.sh.ncols
-        self.nrows = self.sh.nrows
-        self.hash_comments = hash_comments
+        self.sh = self.xlsbook.sheet(sheet)
         
-        cleanrow_ = lambda row_: [x if x is not '' else None for x in row_]
-        
-        def getvalue(h_):
-            if hasattr(h_.value, "encode"):
-                return h_.value.encode()
-            else:
-                return h_.value
-            
-        if header:
-            self.hdr = [getvalue(h) for h in self.sh.row(startrow)]
-            rowValues = lambda row_, loc: dict(zip(self.hdr[loc:],
-                                                   cleanrow_(row_[loc:])))
-                                                   
-        else:
-            self.hdr = None
-            rowValues = lambda row_, loc: cleanrow_(row_[loc:])
-
-        self.refcolumn = []
-        self.qdata = {}
-        
-        # set rows, column to start and end reading
-        startatrow = startrow + 1 if header else startrow
-        if not numrows:
-            numrows = self.nrows
-        else:
-            numrows = startatrow+numrows
-        
-        startloc = 1 if idx_column == 0 else 0
-        
-        # read in cell values by row from sheet
-        for xrow in range(startatrow, numrows):
-            try:
-                xr = map(self.xlCellValue, self.sh.row(xrow))
-                
-            except:
-                print("problem with row %s" % xrow)
-                continue #skips a row if there's a problem
-                
-            else:
-                xrvalues = rowValues(xr, startloc)
-                dkey = xr[idx_column] if idx_column >= 0 else xrow
-                
-                # refcolumn is an ordered list of keys,
-                # preserving order in spreadsheet, unlike dict.__keys__
-                if header and (dkey not in self.refcolumn):
-                    self.refcolumn.append(dkey)
-                    
-                self.qdata[dkey] = xrvalues
+        self.refcolumn, self.hdr, self.qdata = \
+                self.xlsbook.sheet_as_db(sheet,
+                                         header, idx_column,
+                                         startrow, numrows)
         
         self.book.unload_sheet(self.sh.name)
         self.book.release_resources()
@@ -266,9 +384,6 @@ class XLdb(object):
         else:
             return colList
             
-    def xlCellValue(self, x):
-        return xlValue(x, self.datemode, self.hash_comments)
-
 
 class XLOut(object):
     '''
