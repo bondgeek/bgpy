@@ -8,7 +8,8 @@ Utility functions:
     xlValue
 
 Classes:
-    XLSBook
+    XLSReader
+    XLSXReader
     XLdb
     XLOut
 
@@ -134,12 +135,27 @@ class XLSReader(object):
         return self.sh
         
     def sheet_as_db(self, sheet=None, 
-                    header=False, dkey=-1,
+                    header=True, dkey=0,
                     startrow=0, numrows=None):
         '''
-        Reads rows in a given sheet. Returns (refcolumn, qdata)
+        Reads rows in a given sheet. Returns (refcolumn, hdr, qdata)
+        
+        sheet:  Name of sheet or 0-indexed sheet number.          
+                        
+        header: True--return rows as dict objects, with 'startrow' as keys.
+                False--return rows as list
+        
+        dkey:   Column to serve as the dict key for qdata.
+                '-1' uses the row number as key.
+        
+        startrow: Begin reading at this row (0 indexed), ignore ealier rows                
+        
+        numrows: number of rows to read, None=read all
         
         '''
+        class sheetdb(object):
+            pass
+            
         self.sh = self.sheet(sheet)
         
         cleanrow_ = lambda row_: [x if x is not '' else None for x in row_]
@@ -148,7 +164,7 @@ class XLSReader(object):
         
         hdr = None
         if header:
-            startatrow = startrow + 1
+            startrow = startrow + 1
             hdr = [get_xlvalue(h) for h in self.sh.row(startrow)]
             def rowValues(row_, loc): 
                 return dict(zip(hdr[loc:],
@@ -163,9 +179,9 @@ class XLSReader(object):
         if not numrows:
             numrows = self.sh.nrows
         else:
-            numrows = startatrow + numrows
+            numrows = startrow + numrows
             
-        for xrow in range(startatrow, numrows):
+        for xrow in range(startrow, numrows):
             try:
                 xr = map(self.xlCellValue, self.sh.row(xrow))
                 
@@ -185,8 +201,11 @@ class XLSReader(object):
         
         if dkey >= 0:
             qdata = dict(zip(refcolumn, qdata))
+        
+        for attr in ['refcolumn', 'hdr', 'qdata']:
+            setattr(sheetdb, attr, vars().get(attr, None))
             
-        return (refcolumn, hdr, qdata)
+        return sheetdb
 
     def read_sheet(self, sheet_name=None, sheet_index=0):
         def read_row(sheet, row):
@@ -266,6 +285,9 @@ class XLSXReader(object):
         class member list self.qdata
         
         '''
+        class sheetdb(object):
+            pass
+            
         self.sh = self.sheet(sheet)
         
         startloc = 1 if dkey == 0 else 0
@@ -307,9 +329,11 @@ class XLSXReader(object):
         
         if dkey >= 0:
             qdata = dict(zip(refcolumn, qdata))
+                
+        for attr in ['refcolumn', 'hdr', 'qdata']:
+            setattr(sheetdb, attr, vars().get(attr, None))
             
-        return (refcolumn, hdr, qdata)
-                 
+        return sheetdb         
 
 class XLdb(object):
     '''
@@ -346,10 +370,12 @@ class XLdb(object):
         
         self.sh = self.xlsbook.sheet(sheet)
         
-        self.refcolumn, self.hdr, self.qdata = \
-                self.xlsbook.sheet_as_db(sheet,
+        sheetdb = self.xlsbook.sheet_as_db(sheet,
                                          header, idx_column,
                                          startrow, numrows)
+        
+        for attr in ['refcolumn', 'hdr', 'qdata']:
+            setattr(self, getattr(sheetdb, attr, None))    
         
         self.book.unload_sheet(self.sh.name)
         self.book.release_resources()
