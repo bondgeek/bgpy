@@ -164,7 +164,6 @@ class XLSReader(object):
         
         hdr = None
         if header:
-            startrow = startrow + 1
             hdr = [get_xlvalue(h) for h in self.sh.row(startrow)]
             def rowValues(row_, loc): 
                 return dict(zip(hdr[loc:],
