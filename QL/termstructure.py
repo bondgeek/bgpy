@@ -270,8 +270,8 @@ class SimpleCurve(TermStructureModel):
     def curve_(self, ratehelpervector):
         "calc curve"
 
-        PYC = ql.PiecewiseFlatForward
-        curve = PYC(self.settlement, ratehelpervector, 
+        curve = ql.PiecewiseFlatForward(
+                    self.settlement, ratehelpervector, 
                     ql.ActualActualISDA,
                     self.JumpQuotes, self.JumpDates, self.accuracy)
 

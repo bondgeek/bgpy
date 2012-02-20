@@ -277,8 +277,8 @@ class XLSXReader(object):
         return self.sh
         
     def sheet_as_db(self, sheet=None,
-                    header=False, dkey=-1,
-                    startrow=0, numrows=None):
+                    header=True, dkey=0,
+                    startrow=0):
         '''
         Reads rows in a given sheet. Data is stored in 
         class member list self.qdata
@@ -298,16 +298,17 @@ class XLSXReader(object):
         
         nrow = 0
         for row in self.sh.iter_rows():
-            if nrow == startrow:
-                if header:
-                    hdr = [cell.internal_value for cell in row]
-                    def rowValues(row_, loc): 
-                        return dict(zip(hdr[loc:],
-                                        row_[loc:]))
-            elif nrow <= startrow:
+
+            if nrow < startrow:
+                nrow += 1
                 continue
-            
-            nrow += 1
+
+            if header and not hdr:
+                hdr = [cell.internal_value for cell in row]
+                def rowValues(row_, loc): 
+                    return dict(zip(hdr[loc:],
+                                    row_[loc:]))
+                continue
             
             try:
                 xr = map(self.xlCellValue, row)
@@ -324,13 +325,11 @@ class XLSXReader(object):
                 else:
                     refcolumn.append(nrow)
         
-        nrows = len(qdata)
-        
         if dkey >= 0:
             qdata = dict(zip(refcolumn, qdata))
                 
         for attr in ['refcolumn', 'hdr', 'qdata']:
-            setattr(sheetdb, attr, vars().get(attr, None))
+            setattr(sheetdb, attr, vars().get(attr, "what"))
             
         return sheetdb         
 
@@ -374,7 +373,7 @@ class XLdb(object):
                                          startrow, numrows)
         
         for attr in ['refcolumn', 'hdr', 'qdata']:
-            setattr(self, getattr(sheetdb, attr, None))    
+            setattr(self, attr, getattr(sheetdb, attr, None))    
         
         self.book.unload_sheet(self.sh.name)
         self.book.release_resources()
