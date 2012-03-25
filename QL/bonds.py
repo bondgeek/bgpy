@@ -77,15 +77,29 @@ class Call(object):
         return self.__str__()
 
 class SimpleBond(SimpleBondType):
-    """
+    '''
     Bond Object: 
     coupon, maturity, issuedate, oid, callfeature, bondtype, redvalue
-    """
+    
+    '''
     def __init__(self, coupon, maturity, 
                  callfeature=None, oid=None, issuedate=None, 
                  redvalue=100.,
                  settledate=None):
-                 
+        '''
+        Examples:
+        Non Call Bond:
+        > bond = bgpy.QL.SimpleBond(.05, date(2022, 3, 1))
+        
+        Callable Bond:
+        > bond = bgpy.QL.SimpleBond(.05, 
+                                    date(2022, 3, 1),
+                                    oid=.055,
+                                    callfeature=bgpy.QL.Call(date(2017, 3, 1)),
+                                    issuedate=date(2007, 3, 1)
+                                    )
+                                    
+        '''
         maturity, issuedate, settledate = map(toDate, [maturity, issuedate, 
                                                        settledate])
 
