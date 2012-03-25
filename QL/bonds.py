@@ -5,6 +5,8 @@ Uses QuantLib date handling, everything takes Resolver's f%^&*(#@g Microsoft Dat
 Created on Jan 24, 2010
 @author: Bart Mosley
 '''
+import logging
+
 from math import floor, fmod
 
 import bgpy.__QuantLib as ql
@@ -234,8 +236,8 @@ class SimpleBond(SimpleBondType):
         
         def to_other(level, ytmfunc, cmplevel):
             '''
-            calculate yield to worst, if callable, given price, 
-            otherwise returns ytm or vice versa
+            cmplevel:  use to calculate yield to worst from price, if callable 
+                       otherwise returns ytm 
             
             '''
             val = getattr(self, ytmfunc)(level)
@@ -243,7 +245,8 @@ class SimpleBond(SimpleBondType):
             toprice = self.redvalue
 
             if self.calllist:
-                earliestcall= calendar.advance(self.settle_, ql.Period(self.frequency))
+                earliestcall= calendar.advance(self.settle_, 
+                                               ql.Period(self.frequency))
                 
                 for call in self.calllist:
                     calldt, callpx, cbond = call
@@ -253,7 +256,7 @@ class SimpleBond(SimpleBondType):
                             (calldt < todate or callpx < toprice)]):
                         
                         cbond.settlemenDate = self.settle_
-                        newval = getattr(cbond,ytmfunc)(level)
+                        newval = getattr(cbond, ytmfunc)(level)
                         
                         if newval <= val:
                             todate = calldt
@@ -277,6 +280,8 @@ class SimpleBond(SimpleBondType):
         
         result_value = to_other(level, ytmfunc, cmplevel)
         
+        # TODO: should replace this functionality with a property that returns
+        #       a dictionary
         if dict_out:
             val, todate, toprice = result_value
             if not bondyield:
@@ -305,10 +310,12 @@ class SimpleBond(SimpleBondType):
     def ytmToPrice(self, yld, redemption=None):
         """calculates price given yield"""    
         if(yld < 0.0):
-            print BondException.NEG_YIELD_MSG
-            print("settle: %s coupon: %s maturity: %s" % (self.settlementDate, 
-                                                          self.coupon, 
-                                                          self.maturity))
+            logging.info("%s\nsettle: %s coupon: %s maturity: %s" % 
+                            (BondException.NEG_YIELD_MSG,
+                             self.settlementDate, 
+                             self.coupon, 
+                             self.maturity))
+                            
             # yld = BondException.MIN_YLD
             
         if not redemption:
@@ -365,7 +372,7 @@ class SimpleBond(SimpleBondType):
             try:
                 yld = Secant(y0, yg, objfunction, price)
             except BondException:
-                print "Solver error in toYTM"
+                logging.info("Solver error in toYTM")
                 return BondException.MIN_YLD
             except:
                 raise
