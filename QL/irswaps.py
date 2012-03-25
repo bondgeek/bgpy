@@ -10,7 +10,7 @@ import bgpy.__QuantLib as ql
 
 from bgpy.QL.bgdate import toDate
 from bgpy.QL.tenor import Tenor
-
+            
 FixedPayer = ql.VanillaSwap.Payer
 FixedReceiver = ql.VanillaSwap.Receiver
 

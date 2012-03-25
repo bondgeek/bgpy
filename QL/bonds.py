@@ -60,7 +60,7 @@ class SimpleBondType(BondType):
         return d
 
 class Call(object):
-    def __init__(self, firstcall=None, callprice=None, parcall=None, 
+    def __init__(self, firstcall=None, callprice=100., parcall=None, 
                  frequency=ql.Semiannual, redvalue=100., ObjectId=None):
         '''
         Create a call feature.

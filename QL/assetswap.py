@@ -7,6 +7,7 @@ Support option adjusted calculations
 import bgpy.__QuantLib as ql
 
 from bgpy.QL import toDate
+from bgpy.QL import SimpleBond
 from bgpy.dpatterns import Struct
 from bgpy.math import Secant, SolverExceptions
 from bgpy.QL.termstructure import SpreadedCurve
@@ -67,6 +68,8 @@ class AssetSwap(object):
         baseswap = underlying noncallable bond asset swap.
         swaption = swaption replicating call feature, if any.
         
+        Does not work for zero coupon callable bonds
+        Does not work for non par calls if ratio != 1.0
         '''     
         assetSwapSettle = termstructure.referenceDate()
         self.assetSwapCoupon = self.coupon / ratio   
@@ -82,13 +85,20 @@ class AssetSwap(object):
         self.swaption = None
         if self.calllist:
             firstcall, callprice, callbond = self.calllist[0]
+                        
+            if callprice > 100.0:
+                callCpnRate = SimpleBond(self.assetSwapCoupon, 
+                                   self.maturity, 
+                                   settledate=firstcall).toYTM(callprice)
+            else:
+                callCpnRate = self.assetSwapCoupon
             
             # assuming 30days call notice as a minimum
             if ql.Thirty360().dayCount(firstcall, self.maturity) >= 30:
                 self.swaption = USDLiborSwaption(termstructure, 
                                                  firstcall, 
                                                  self.maturity, 
-                                                 self.assetSwapCoupon, 
+                                                 callCpnRate, 
                                                  PayFlag=0, 
                                                  spread=spread_,
                                                  bermudan=True,
@@ -165,7 +175,7 @@ class AssetSwap(object):
             "S" for asset swap
             "O" for oas 
         
-        Objective function is well-behaved, so secant search is sufficient.
+        returns BondValues Object (repr = '<price, yield>')
         
         '''
         spreadFunc = self.spreadType.get(spreadType, self.aswValue)
@@ -182,12 +192,14 @@ class AssetSwap(object):
             x1 = bondYTM - self.fairSwapRate(termstructure)
                 
         else:
-            valueFunc = lambda x_: spreadFunc(termstructure, baseSpread, x_, vol,
+            valueFunc = lambda x_: spreadFunc(termstructure, baseSpread, 
+                                              x_, vol,
                                               model=model,
                                               solver=True)
             x_ = 1.0
             x1 = bondYTM / self.fairSwapRate(termstructure)
         
+        # Objective function is well-behaved, so secant search is sufficient.
         value_ = Secant(x_, x1, valueFunc, objValue)
         
         if solveRatio:
