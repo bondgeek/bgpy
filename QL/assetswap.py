@@ -6,8 +6,8 @@ Support option adjusted calculations
 '''
 import bgpy.__QuantLib as ql
 
-from bgpy.QL import toDate
-from bgpy.QL import SimpleBond
+from bgpy.QL.bgdate import toDate
+from bgpy.QL.bonds import SimpleBond
 from bgpy.dpatterns import Struct
 from bgpy.math import Secant, SolverExceptions
 from bgpy.QL.termstructure import SpreadedCurve
