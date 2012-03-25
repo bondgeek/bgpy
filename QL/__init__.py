@@ -12,6 +12,7 @@ from bgpy.QL.tenor import Tenor
 from bgpy.QL.bonds import SimpleBond, Call
 from bgpy.QL.munibonds import MuniBond
 from bgpy.QL.ustbonds import USTBond, USTBill
+from bgpy.QL.assetswap import AssetSwap
 
 from bgpy.QL.irswaps import USDLiborSwap, USDLiborSwaption
 
