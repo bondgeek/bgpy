@@ -13,7 +13,6 @@ import bgpy.__QuantLib as ql
 
 from bgpy.QL import toDate
 from bgpy.math import Secant, SolverExceptions
-from bgpy.QL.assetswap import AssetSwap
 
 #globals
 calendar = ql.TARGET()
@@ -394,12 +393,5 @@ class SimpleBond(SimpleBondType):
         p1 = self.ytmToPrice(ytm+ydelta)
         
         return (p0 - p1) / 2.0
-    
-    def assetSwap(self, termstructure=None, spread_=0.0, ratio=1.0):
-        '''
-        links an asset swap object.
-        ''' 
-        self.assetswap = AssetSwap(self, termstructure, spread_, ratio)
-        
-        return self.assetswap
+
         
