@@ -278,27 +278,29 @@ class SimpleBond(SimpleBondType):
             calcattr = 'price'
         
         result_value = to_other(level, ytmfunc, cmplevel)
+        val, todate, toprice = result_value
+        if not bondyield:
+            bondyield = val
+        else:
+            price = val
         
+        self.result = {'bondyield': bondyield, 
+                      'price': price, 
+                      'toDate': todate,
+                      'toPrice': toprice}
+                      
         # TODO: should replace this functionality with a property that returns
         #       a dictionary
         if dict_out:
-            val, todate, toprice = result_value
-            if not bondyield:
-                bondyield = val
-            else:
-                price = val
-                
-            result = {'bondyield': bondyield, 
-                      'price': price, 
-                      'toDate': todate,
-                      'toPrice': toprice,
-                      'dv01': self.dv01(bondyield),
-                      'dv01YTM': self.dv01YTM(bondyield)}
-            result[calcattr] = val
-        else:
-            result = result_value[0]
+            self.result['dv01'] = self.dv01(bondyield)
+            self.result['dv01YTM'] = self.dv01YTM(bondyield)
+            self.result[calcattr] = val
+            rc = self.result
             
-        return result
+        else:
+            rc = result_value[0]
+            
+        return rc
               
     def ai(self):
         if (self.frac==0):
