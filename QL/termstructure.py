@@ -371,7 +371,8 @@ class SpreadedCurve(TermStructureModel):
         self.curvedate_ = termstructure.curvedate
         self.settlement_ = termstructure.settlement
         
-        self.spreadType = type                                  
+        self.spreadType = type
+                                          
         self.spread_ = ql.SimpleQuote(spread)
         curve = self.spreadedTermStructure_[type](termstructure.handle,
                                                   ql.QuoteHandle(self.spread_))

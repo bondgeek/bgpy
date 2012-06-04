@@ -109,14 +109,16 @@ class AssetSwap(object):
     def oasValue(self, termstructure, spread_, ratio_=1.0, vol=1e-7, 
                        model=ql.BlackKarasinski, solver=False):
         '''
-        OAS given spread
+        Calculate Asset Swap premium value given OAS spread
         
         '''
         
         if (not solver) or not getattr(self, "oasCurve", None):
             self.oasCurve = SpreadedCurve(termstructure, type="Z")
         
-        self.update(self.oasCurve, 0.0, ratio_)
+        # make sure swaps used to model underlying bond are setup
+        # self.baseswap & self.swaption
+        self.update(self.oasCurve, 0.0, ratio_) 
         
         self.oasCurve.spread = spread_
         
@@ -124,7 +126,8 @@ class AssetSwap(object):
         prm = self.basevalue * ratio_
         
         if self.swaption:
-            self.callvalue = self.swaption.value(vol, self.oasCurve, 
+            self.callvalue = self.swaption.value(vol, 
+            									 self.oasCurve, 
                                                  model=model) * ratio_
             prm += self.callvalue
         
