@@ -22,11 +22,12 @@ class BondException(Exception):
     MAX_PY_ITERATIONS = 24
     MAX_PY_ITERATIONS_MSG = "Max Iterations--%d--reached in price/yield calc" % MAX_PY_ITERATIONS
     MIN_YLD = 1e-7
-    NEG_YIELD_MSG = "Negative yield in ytmToPrice" 
+    NEG_YIELD_MSG = "Negative yield " 
 
 class BondType(object):
     '''
     Do not use except as base class
+    
     '''
     
     settlementdays = 3
@@ -66,6 +67,7 @@ class Call(object):
         '''
         # make sure we have a QuantLib compliant set of dates
         firstcall, parcall = map(toDate, [firstcall, parcall])
+        
         self.firstcall = firstcall if firstcall else ql.Date()
         self.callprice = callprice
         self.parcall = parcall if parcall else ql.Date()

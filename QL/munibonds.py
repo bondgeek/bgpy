@@ -60,6 +60,7 @@ class MuniBond(MuniBondType, SimpleBond):
         '''
         Calculate after-tax yield given price,
         sets qtax flag to True if price is outside deminimus
+        
         '''
         
         # Check bond's attributes if arguments not passed.
